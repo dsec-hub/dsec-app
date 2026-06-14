@@ -1,0 +1,75 @@
+import { cn } from "@/lib/format";
+
+const controlBase =
+  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent disabled:opacity-60";
+
+export function Field({
+  label,
+  htmlFor,
+  error,
+  hint,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  error?: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={htmlFor} className="text-sm text-muted">
+        {label}
+      </label>
+      {children}
+      {hint && !error && <p className="text-xs text-muted/70">{hint}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
+
+export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return <input {...props} className={cn(controlBase, props.className)} />;
+}
+
+export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea {...props} className={cn(controlBase, "min-h-20 resize-y", props.className)} />
+  );
+}
+
+export function SelectField({
+  children,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select {...props} className={cn(controlBase, props.className)}>
+      {children}
+    </select>
+  );
+}
+
+export function CheckboxField({
+  label,
+  ...props
+}: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <label className="flex items-center gap-2.5 text-sm">
+      <input
+        type="checkbox"
+        {...props}
+        className="size-4 rounded border-border bg-background accent-[var(--color-accent)]"
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
+
+export function FormError({ children }: { children?: React.ReactNode }) {
+  if (!children) return null;
+  return (
+    <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">
+      {children}
+    </p>
+  );
+}
