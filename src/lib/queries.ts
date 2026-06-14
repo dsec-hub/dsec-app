@@ -1,6 +1,7 @@
 import {
   and,
   asc,
+  desc,
   eq,
   gte,
   inArray,
@@ -141,4 +142,61 @@ export async function getPeopleOptions(): Promise<{ id: number; name: string }[]
     .from(people)
     .where(eq(people.archived, false))
     .orderBy(asc(people.name));
+}
+
+export async function getEventOptions(): Promise<{ id: number; name: string }[]> {
+  return db
+    .select({ id: events.id, name: events.name })
+    .from(events)
+    .where(eq(events.archived, false))
+    .orderBy(asc(events.startDate));
+}
+
+// --- People section ---
+
+export async function getAllPeople(): Promise<PersonRow[]> {
+  return db
+    .select()
+    .from(people)
+    .where(eq(people.archived, false))
+    .orderBy(asc(people.committee), asc(people.name));
+}
+
+export async function getPersonById(id: number): Promise<PersonRow | null> {
+  const [row] = await db.select().from(people).where(eq(people.id, id)).limit(1);
+  return row ?? null;
+}
+
+// --- Sponsors section ---
+
+export async function getSponsors(): Promise<SponsorWithContact[]> {
+  const rows = await db
+    .select({ s: sponsors, contactName: people.name })
+    .from(sponsors)
+    .leftJoin(people, eq(sponsors.contactPersonId, people.id))
+    .where(eq(sponsors.archived, false))
+    .orderBy(asc(sponsors.organisation));
+  return rows.map((r) => ({ ...r.s, contactName: r.contactName }));
+}
+
+export async function getSponsorById(id: number): Promise<SponsorRow | null> {
+  const [row] = await db.select().from(sponsors).where(eq(sponsors.id, id)).limit(1);
+  return row ?? null;
+}
+
+// --- Finance section ---
+
+export async function getAllFinance(): Promise<FinanceWithEvent[]> {
+  const rows = await db
+    .select({ f: finance, eventName: events.name })
+    .from(finance)
+    .leftJoin(events, eq(finance.relatedEventId, events.id))
+    .where(eq(finance.archived, false))
+    .orderBy(desc(finance.dateRequested));
+  return rows.map((r) => ({ ...r.f, eventName: r.eventName }));
+}
+
+export async function getFinanceById(id: number): Promise<FinanceRow | null> {
+  const [row] = await db.select().from(finance).where(eq(finance.id, id)).limit(1);
+  return row ?? null;
 }

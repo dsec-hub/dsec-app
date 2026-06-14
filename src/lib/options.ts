@@ -119,3 +119,29 @@ export function financeStatusVariant(status: string | null | undefined): BadgeVa
       return "warning"; // Requested / Pending
   }
 }
+
+export function personStatusVariant(status: string | null | undefined): BadgeVariant {
+  switch (status) {
+    case "Active":
+      return "success";
+    case "Prospect":
+      return "accent";
+    default:
+      return "neutral"; // Inactive / Alumni
+  }
+}
+
+export function sponsorStageVariant(stage: string | null | undefined): BadgeVariant {
+  switch (stage) {
+    case "Secured":
+      return "success";
+    case "Negotiating":
+      return "accent";
+    case "Contacted":
+      return "warning";
+    case "Declined":
+      return "danger";
+    default:
+      return "neutral"; // Prospect
+  }
+}

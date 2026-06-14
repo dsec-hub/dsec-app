@@ -7,24 +7,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { events } from "@/db/schema";
 import { requireSession } from "@/lib/dal";
+import { bool, int, str } from "@/lib/form-data";
 
 export type FormState = { error?: string } | undefined;
-
-function str(fd: FormData, key: string): string | null {
-  const v = (fd.get(key) as string | null)?.trim();
-  return v ? v : null;
-}
-
-function int(fd: FormData, key: string): number | null {
-  const v = str(fd, key);
-  if (v === null) return null;
-  const n = Number.parseInt(v, 10);
-  return Number.isNaN(n) ? null : n;
-}
-
-function bool(fd: FormData, key: string): boolean {
-  return fd.get(key) != null; // a checked checkbox is present; unchecked is absent
-}
 
 function parseEvent(fd: FormData) {
   return {
