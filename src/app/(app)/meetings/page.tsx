@@ -39,7 +39,7 @@ export default async function MeetingsPage() {
       <PageHeader
         title="Meetings"
         description="Minutes from every committee and exec meeting. Drop a raw transcript into the MCP generate_meeting_notes tool to turn it into a clean summary and action items."
-        breadcrumbs={[{ label: "Overview", href: "/" }, { label: "Meetings" }]}
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Meetings" }]}
         action={writable ? <NewMeetingButton events={events} people={people} /> : undefined}
       />
 

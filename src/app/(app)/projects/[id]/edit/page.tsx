@@ -36,7 +36,7 @@ export default async function EditProjectPage({
         title="Edit project"
         description={project.name}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Projects", href: "/projects" },
           { label: project.name },
         ]}

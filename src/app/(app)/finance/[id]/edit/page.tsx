@@ -33,7 +33,7 @@ export default async function EditFinancePage({
         title="Edit finance item"
         description={entry.item}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Finance", href: "/finance" },
           { label: entry.item },
         ]}

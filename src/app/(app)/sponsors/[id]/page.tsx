@@ -55,7 +55,7 @@ export default async function SponsorDetailPage({
             .join(" · ") || undefined
         }
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Sponsors", href: "/sponsors" },
           { label: sponsor.organisation },
         ]}

@@ -53,7 +53,7 @@ export default async function LeadsPage({
         title="Sponsor Leads"
         description="Inbound enquiries from the public website and Cal.com bookings"
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Sponsors", href: "/sponsors" },
           { label: "Leads" },
         ]}

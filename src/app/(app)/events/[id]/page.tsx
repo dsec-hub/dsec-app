@@ -70,7 +70,7 @@ export default async function EventDetailPage({
         title={event.name}
         description={[event.type, event.format].filter(Boolean).join(" · ") || undefined}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Events", href: "/events" },
           { label: event.name },
         ]}

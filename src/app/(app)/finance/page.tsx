@@ -94,7 +94,7 @@ export default async function FinancePage() {
       <PageHeader
         title="Finance"
         description="Live club balance from DUSA, plus the committee's grant and reimbursement tracker."
-        breadcrumbs={[{ label: "Overview", href: "/" }, { label: "Finance" }]}
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Finance" }]}
         action={writable && <NewFinanceButton events={events} />}
       />
 

@@ -35,7 +35,7 @@ export default async function EditMeetingPage({
         title="Edit meeting"
         description={meeting.title}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Meetings", href: "/meetings" },
           { label: meeting.title },
         ]}

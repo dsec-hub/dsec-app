@@ -26,7 +26,7 @@ export default async function NewDocumentPage() {
         title="New doc"
         description="Write in Markdown — the preview updates as you type."
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Docs", href: "/docs" },
           { label: "New" },
         ]}

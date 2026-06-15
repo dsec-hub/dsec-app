@@ -29,7 +29,7 @@ export default async function ProjectDetailPage({
         title={project.name}
         description={project.summary ?? undefined}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Projects", href: "/projects" },
           { label: project.name },
         ]}

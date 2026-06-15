@@ -29,7 +29,7 @@ export default async function MeetingDetailPage({
         title={meeting.title}
         description={[meeting.type, formatDate(meeting.meetingDate), meeting.location].filter(Boolean).join(" · ")}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Meetings", href: "/meetings" },
           { label: meeting.title },
         ]}

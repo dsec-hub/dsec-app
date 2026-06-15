@@ -33,7 +33,7 @@ export default async function DocDetailPage({
             .join(" · ")
         }
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Docs", href: "/docs" },
           { label: doc.title },
         ]}

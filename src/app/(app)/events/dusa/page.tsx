@@ -21,7 +21,7 @@ export default async function DusaPipelinePage() {
     <>
       <PageHeader
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Events", href: "/events" },
           { label: "DUSA pipeline" },
         ]}

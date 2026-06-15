@@ -75,7 +75,7 @@ export default async function DocsPage({
       <PageHeader
         title="Docs"
         description="Notion-style documents — notes, meeting minutes, sponsor packs, and deliverables."
-        breadcrumbs={[{ label: "Overview", href: "/" }, { label: "Docs" }]}
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Docs" }]}
         action={
           writable ? (
             <Link href="/docs/new" className={buttonPrimary}>

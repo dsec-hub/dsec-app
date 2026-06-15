@@ -25,7 +25,7 @@ export default async function EventsPage() {
       <PageHeader
         title="Events"
         description="Every event the club is running. Click one to view."
-        breadcrumbs={[{ label: "Overview", href: "/" }, { label: "Events" }]}
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Events" }]}
         action={
           <div className="flex gap-2">
             <Link href="/events/dusa" className={buttonSecondary}>

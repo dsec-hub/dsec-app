@@ -73,7 +73,7 @@ export default async function TasksPage({
       <PageHeader
         title="Tasks"
         description="Trello-style boards across the committee. Tasks with no board land in the Inbox."
-        breadcrumbs={[{ label: "Overview", href: "/" }, { label: "Tasks" }]}
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Tasks" }]}
         action={
           writable ? (
             <div className="flex items-center gap-2">

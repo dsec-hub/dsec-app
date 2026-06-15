@@ -280,16 +280,17 @@ function SidebarNav({
   return (
     <nav className="mt-2 flex flex-1 flex-col gap-0.5 overflow-y-auto">
       {groups.map((group, i) => {
-        // Group folding only applies to the expanded sidebar — when the rail is
-        // collapsed to icons there's no heading to click, so always show items.
-        const folded = !collapsed && collapsedGroups.has(group.label);
+        // A label-less group (the home item) renders its items with no header and
+        // never folds. Group folding otherwise only applies to the expanded
+        // sidebar — collapsed to icons there's no heading to click.
+        const folded = !collapsed && !!group.label && collapsedGroups.has(group.label);
         return (
-          <div key={group.label} className={cn(i > 0 && "mt-3")}>
+          <div key={group.label || "home"} className={cn(i > 0 && "mt-3")}>
             {collapsed ? (
               // No room for a label — a hairline rule keeps groups separated
               // (skipped for the first one).
               i > 0 && <div className="mx-2 mb-1 border-t border-border" />
-            ) : (
+            ) : group.label ? (
               <button
                 type="button"
                 onClick={() => toggleGroupStore(group.label)}
@@ -304,7 +305,7 @@ function SidebarNav({
                   )}
                 />
               </button>
-            )}
+            ) : null}
             {!folded && (
               <div className="flex flex-col gap-0.5">
                 {group.items.map((item) => {

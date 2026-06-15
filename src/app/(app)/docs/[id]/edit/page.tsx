@@ -42,7 +42,7 @@ export default async function EditDocumentPage({
         title="Edit doc"
         description={document.title}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Docs", href: "/docs" },
           { label: document.title },
         ]}

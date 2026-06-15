@@ -39,7 +39,7 @@ export default async function EditPersonPage({
         title="Edit person"
         description={person.name}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "People", href: "/people" },
           { label: person.name },
         ]}

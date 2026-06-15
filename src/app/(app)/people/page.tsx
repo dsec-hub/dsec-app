@@ -44,7 +44,7 @@ export default async function PeoplePage() {
       <PageHeader
         title="People"
         description="Committee roster and contacts."
-        breadcrumbs={[{ label: "Overview", href: "/" }, { label: "People" }]}
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "People" }]}
         action={writable && <NewPersonButton committees={committeeOptions} />}
       />
 

@@ -49,7 +49,7 @@ export default async function ProjectsPage() {
       <PageHeader
         title="Projects"
         description="What the club is building — community projects, tools, and showcases."
-        breadcrumbs={[{ label: "Overview", href: "/" }, { label: "Projects" }]}
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Projects" }]}
         action={writable && <NewProjectButton people={people} events={events} />}
       />
 

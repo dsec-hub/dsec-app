@@ -14,11 +14,10 @@ type NavSection = { label: string; items: (NavItem & { module?: string })[] };
 
 const NAV: NavSection[] = [
   {
-    label: "Overview",
-    items: [
-      { href: "/", label: "Overview", icon: "overview" },
-      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-    ],
+    // Label-less lead group: a single always-available home. (The separate
+    // "Overview" landing was merged into the Dashboard.)
+    label: "",
+    items: [{ href: "/dashboard", label: "Dashboard", icon: "dashboard" }],
   },
   {
     label: "Operations",

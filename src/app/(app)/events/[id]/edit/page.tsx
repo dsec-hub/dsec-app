@@ -49,7 +49,7 @@ export default async function EditEventPage({
         title="Edit event"
         description={event.name}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Events", href: "/events" },
           { label: event.name },
         ]}

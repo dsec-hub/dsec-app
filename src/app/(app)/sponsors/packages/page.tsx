@@ -18,7 +18,7 @@ export default async function PackagesPage() {
         title="Sponsorship Packages"
         description="Tier definitions shown on the public website"
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Sponsors", href: "/sponsors" },
           { label: "Packages" },
         ]}

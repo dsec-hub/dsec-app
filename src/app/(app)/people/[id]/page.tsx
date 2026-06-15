@@ -69,7 +69,7 @@ export default async function PersonDetailPage({
         title={person.name}
         description={person.roleTitle ?? undefined}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "People", href: "/people" },
           { label: person.name },
         ]}

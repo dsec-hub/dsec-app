@@ -102,7 +102,7 @@ export async function requireUser(): Promise<CurrentUser> {
 /** Require access to a specific module; bounce to the overview otherwise. */
 export async function requireModule(key: ModuleKey): Promise<CurrentUser> {
   const user = await requireUser();
-  if (!canAccess(user.modules, key)) redirect("/");
+  if (!canAccess(user.modules, key)) redirect("/dashboard");
   return user;
 }
 
@@ -114,7 +114,7 @@ export async function requireModule(key: ModuleKey): Promise<CurrentUser> {
  */
 export async function requireWrite(key: ModuleKey): Promise<CurrentUser> {
   const user = await requireModule(key);
-  if (!canWrite(user.modules, user.writeModules, key)) redirect("/");
+  if (!canWrite(user.modules, user.writeModules, key)) redirect("/dashboard");
   return user;
 }
 

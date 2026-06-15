@@ -36,7 +36,7 @@ export default async function EditSponsorPage({
         title="Edit sponsor"
         description={sponsor.organisation}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Sponsors", href: "/sponsors" },
           { label: sponsor.organisation },
         ]}

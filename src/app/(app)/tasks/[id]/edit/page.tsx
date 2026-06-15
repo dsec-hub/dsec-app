@@ -44,7 +44,7 @@ export default async function EditTaskPage({
         title="Edit task"
         description={task.title}
         breadcrumbs={[
-          { label: "Overview", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
           { label: "Tasks", href: "/tasks" },
           { label: task.title },
         ]}

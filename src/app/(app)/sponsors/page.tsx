@@ -44,7 +44,7 @@ export default async function SponsorsPage() {
       <PageHeader
         title="Sponsors"
         description={`Pipeline · ${formatAUD(total)} total value`}
-        breadcrumbs={[{ label: "Overview", href: "/" }, { label: "Sponsors" }]}
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Sponsors" }]}
         action={writable ? <NewSponsorButton people={people} /> : undefined}
       />
 
