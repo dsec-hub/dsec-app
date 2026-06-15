@@ -195,7 +195,7 @@ export function MediaManager({
             : "No images yet."}
         </EmptyState>
       ) : (
-        <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 px-5 pt-5 pb-4 sm:grid-cols-3">
           {existing.map((m) => (
             <MediaCard
               key={m.id}
@@ -274,7 +274,8 @@ function MediaCard({
             type="button"
             onClick={onDelete}
             disabled={pending}
-            className={cn(buttonDanger, "px-2 py-1 text-xs")}
+            // `!` forces the small size over buttonDanger's px-3/py-1.5 (cn can't merge)
+            className={cn(buttonDanger, "px-2! py-1! text-xs")}
             aria-busy={pending}
           >
             {/* Busy state is just the spinner so the button stays as narrow as

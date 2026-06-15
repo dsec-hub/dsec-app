@@ -61,7 +61,7 @@ export function Modal({
             <Icons.close />
           </button>
         </div>
-        <div className="max-h-[80vh] overflow-y-auto px-5 py-5">{children}</div>
+        <div className="max-h-[80vh] overflow-y-auto px-5 pt-5 pb-3">{children}</div>
       </div>
     </div>
   );

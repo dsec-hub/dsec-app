@@ -266,7 +266,6 @@ export async function getTaskStats() {
 }
 
 export async function getTasksDueSoon(days = 14, limit = 12) {
-  const today = todayISO();
   const horizon = new Date();
   horizon.setDate(horizon.getDate() + days);
   const horizonISO = horizon.toISOString().slice(0, 10);
