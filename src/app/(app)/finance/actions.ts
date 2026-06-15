@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { finance } from "@/db/schema";
 import { requireWrite } from "@/lib/dal";
 import { bool, int, num, str } from "@/lib/form-data";
-import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
+import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
 
 export type FormState = ActionResult;
@@ -67,7 +67,7 @@ export async function archiveFinance(id: number): Promise<FormState> {
   return {
     ok: true,
     message: "Finance entry archived",
-    undo: { op: "update", key: "finance", id, prev: { archived: false } },
+    undo: archiveToken("finance", id),
   };
 }
 

@@ -19,6 +19,18 @@ import { Redis } from "@upstash/redis";
 const upstashConfigured =
   !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
 
+// Fail open, but never SILENTLY: in production a missing Upstash config removes
+// the login/credential-stuffing throttle entirely, so make that loud in the
+// Vercel logs rather than degrading invisibly. (We deliberately stay fail-open
+// rather than fail-closed so one missing env var can't lock the whole committee
+// out of signin — bcrypt still slows attackers in the meantime.)
+if (!upstashConfigured && process.env.NODE_ENV === "production") {
+  console.error(
+    "[rate-limit] UPSTASH_REDIS_REST_URL/TOKEN are not set in production — " +
+      "login and per-IP rate limiting are DISABLED (fail-open). Set them to re-enable.",
+  );
+}
+
 // One Redis client, reused across warm invocations. Built only when configured.
 const redis = upstashConfigured ? Redis.fromEnv() : null;
 
@@ -75,17 +87,27 @@ export type LimitResult = {
 const PASS: LimitResult = { success: true, reset: 0 };
 
 /**
- * Best-effort client IP. Behind Cloudflare → Vercel the real client is in
- * `cf-connecting-ip`; Vercel's own header is `x-forwarded-for` (may be a list,
- * left-most is the client). `req.ip` was removed in Next 16.
+ * Trusted client IP, used as the rate-limit key. `req.ip` was removed in Next 16.
+ *
+ * SECURITY: only trust headers the platform sets, never ones the caller can
+ * forge. On the current topology (Vercel with grey-cloud / DNS-only Cloudflare —
+ * see HOSTING.md) Vercel sets `x-real-ip` to the true connecting IP at its edge
+ * and overwrites any client value. The *leftmost* `x-forwarded-for` entry and
+ * `cf-connecting-ip` are attacker-controllable here, so trusting them would let
+ * a rotated header mint a fresh bucket per request and bypass the login throttle.
+ * Prefer `x-real-ip`, then the *rightmost* (trusted) XFF hop.
+ *
+ * If Cloudflare is ever switched to orange-cloud (proxying), re-add
+ * `cf-connecting-ip` as the most-trusted source.
  */
 export function getClientIp(req: Request): string {
-  const cf = req.headers.get("cf-connecting-ip");
-  if (cf) return cf.trim();
   const real = req.headers.get("x-real-ip");
-  if (real) return real.trim();
+  if (real?.trim()) return real.trim();
   const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]!.trim();
+  if (fwd) {
+    const hops = fwd.split(",").map((h) => h.trim()).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1]!;
+  }
   return "0.0.0.0";
 }
 

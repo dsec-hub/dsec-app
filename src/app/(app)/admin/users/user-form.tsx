@@ -68,7 +68,7 @@ export function UserForm({
           type="password"
           name="password"
           autoComplete="new-password"
-          placeholder="New password (min 8 chars)"
+          placeholder="New password (min 12 chars)"
         />
       </Field>
 

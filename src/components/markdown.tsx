@@ -8,6 +8,28 @@ import { cn } from "@/lib/format";
  * rules. Not a full CommonMark implementation, but covers committee docs.
  */
 
+/**
+ * Allowlist the URL scheme on Markdown links/images. This content is authored by
+ * one user and rendered in another's session (docs, meeting notes, event/project
+ * pages), so an unguarded `[x](javascript:…)` / `![x](javascript:…)` would be
+ * stored XSS — React only *warns* on `javascript:` hrefs, it does not block them.
+ *
+ * Returns the URL to use, or null when the scheme is disallowed. Normalises the
+ * way a browser does when resolving a scheme (control chars / whitespace are
+ * stripped, e.g. `java\tscript:` → `javascript:`) before the check.
+ */
+function safeUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  const probe = trimmed.replace(/[\u0000-\u0020]+/g, "").toLowerCase();
+  const scheme = probe.match(/^([a-z][a-z0-9+.-]*):/);
+  if (scheme) {
+    return ["http", "https", "mailto", "tel"].includes(scheme[1]) ? trimmed : null;
+  }
+  // No scheme → relative path or in-page anchor (safe). Block protocol-relative
+  // `//host`, which escapes to an external origin.
+  return probe.startsWith("//") ? null : trimmed;
+}
+
 function renderInline(text: string, keyBase: string): React.ReactNode[] {
   // Order matters: inline code first (so markup inside it stays literal), then
   // images (before links, so the leading `!` isn't dropped), links, bold, italic.
@@ -25,11 +47,14 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
     }
     const image = tok.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
     if (image) {
+      const src = safeUrl(image[2]);
+      // Unsafe scheme (e.g. javascript:/data:) → show the alt text, not an <img>.
+      if (!src) return <span key={key}>{image[1]}</span>;
       return (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={key}
-          src={image[2]}
+          src={src}
           alt={image[1]}
           className="my-2 max-w-full rounded-md border border-border"
         />
@@ -37,8 +62,11 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
     }
     const link = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (link) {
+      const href = safeUrl(link[2]);
+      // Unsafe scheme → render the label as plain text rather than a live link.
+      if (!href) return <span key={key}>{link[1]}</span>;
       return (
-        <CopyableLink key={key} href={link[2]}>
+        <CopyableLink key={key} href={href}>
           {link[1]}
         </CopyableLink>
       );

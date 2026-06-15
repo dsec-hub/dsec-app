@@ -8,6 +8,7 @@ import { appSetting } from "@/db/schema";
 import { requireAdmin } from "@/lib/dal";
 import { str } from "@/lib/form-data";
 import { SITE_LINK_KEYS } from "@/lib/site-settings";
+import { signToken } from "@/lib/undo-sign";
 import type { ActionResult } from "@/lib/undo-types";
 
 export type FormState = ActionResult;
@@ -42,6 +43,6 @@ export async function updateSiteLinks(_prev: FormState, fd: FormData): Promise<F
   return {
     ok: true,
     message: "Links updated",
-    undo: { op: "settings", prev, paths: ["/admin/links"] },
+    undo: signToken({ op: "settings", prev, paths: ["/admin/links"] }),
   };
 }

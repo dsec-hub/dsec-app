@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, sql } from "drizzle-orm";
-import bcrypt from "bcryptjs";
 
 import { db } from "@/db";
 import { appRole, appUser } from "@/db/schema";
 import { requireAdmin } from "@/lib/dal";
 import { bool, int, str } from "@/lib/form-data";
+import { hashPassword, validatePassword } from "@/lib/password";
 import { snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
 
@@ -70,8 +70,9 @@ export async function updateUser(
     updatedAt: new Date().toISOString(),
   };
   if (newPassword) {
-    if (newPassword.length < 8) return { error: "Password must be at least 8 characters." };
-    set.passwordHash = await bcrypt.hash(newPassword, 10);
+    const policyError = validatePassword(newPassword);
+    if (policyError) return { error: policyError };
+    set.passwordHash = await hashPassword(newPassword);
   }
 
   // Snapshot the prior row so the change (role / active / password) is undoable.

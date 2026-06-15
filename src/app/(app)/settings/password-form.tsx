@@ -30,7 +30,7 @@ export function PasswordForm() {
             <TextInput name="current_password" type="password" required autoComplete="current-password" />
           </Field>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="New password" hint="At least 8 characters.">
+            <Field label="New password" hint="At least 12 characters.">
               <TextInput name="new_password" type="password" required autoComplete="new-password" />
             </Field>
             <Field label="Confirm new password">

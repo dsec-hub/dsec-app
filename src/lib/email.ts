@@ -2,11 +2,23 @@ import "server-only";
 
 import { headers } from "next/headers";
 
-/** Resolve the app's public origin for building invite links.
- * Prefers APP_URL; otherwise derives it from the incoming request headers. */
+/**
+ * Resolve the app's public origin for building invite links.
+ *
+ * Prefers APP_URL. In production we REQUIRE it: invite links carry a single-use
+ * token sent by email, so deriving the origin from the (spoofable) `Host` /
+ * `x-forwarded-proto` headers would let a forged Host turn an admin-triggered
+ * invite into a token-exfiltration link pointing at an attacker domain. Only in
+ * dev do we fall back to the request headers for convenience.
+ */
 export async function getAppUrl(): Promise<string> {
   const fromEnv = process.env.APP_URL?.replace(/\/$/, "");
   if (fromEnv) return fromEnv;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "APP_URL must be set in production to build invite links (refusing to trust the Host header).",
+    );
+  }
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");

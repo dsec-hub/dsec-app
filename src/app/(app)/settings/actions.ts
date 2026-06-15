@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { appUser, people } from "@/db/schema";
 import { requireUser } from "@/lib/dal";
 import { str } from "@/lib/form-data";
+import { hashPassword, validatePassword } from "@/lib/password";
 import { ensurePersonForUser } from "@/lib/person-link";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
@@ -75,7 +76,8 @@ export async function changePassword(_prev: FormState, fd: FormData): Promise<Fo
   const confirm = (fd.get("confirm_password") as string | null) ?? "";
 
   if (!current || !next) return { error: "Fill in every password field." };
-  if (next.length < 8) return { error: "New password must be at least 8 characters." };
+  const policyError = validatePassword(next);
+  if (policyError) return { error: policyError };
   if (next !== confirm) return { error: "New password and confirmation don't match." };
 
   const [row] = await db
@@ -88,7 +90,7 @@ export async function changePassword(_prev: FormState, fd: FormData): Promise<Fo
   const valid = await bcrypt.compare(current, row.passwordHash);
   if (!valid) return { error: "Your current password is incorrect." };
 
-  const passwordHash = await bcrypt.hash(next, 10);
+  const passwordHash = await hashPassword(next);
   await db
     .update(appUser)
     .set({ passwordHash, updatedAt: new Date().toISOString() })

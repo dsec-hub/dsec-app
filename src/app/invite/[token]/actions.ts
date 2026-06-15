@@ -1,13 +1,13 @@
 "use server";
 
 import { and, eq, gt } from "drizzle-orm";
-import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 
 import { signIn } from "@/auth";
 import { db } from "@/db";
 import { appInvite, appRole, appUser } from "@/db/schema";
 import { str } from "@/lib/form-data";
+import { hashPassword, validatePassword } from "@/lib/password";
 import { ensurePersonForUser } from "@/lib/person-link";
 import { hashToken } from "@/lib/tokens";
 
@@ -50,10 +50,11 @@ export async function acceptInvite(
   const password = str(fd, "password") ?? "";
   const confirm = str(fd, "confirm") ?? "";
 
-  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  const policyError = validatePassword(password);
+  if (policyError) return { error: policyError };
   if (password !== confirm) return { error: "Passwords don't match." };
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await hashPassword(password);
 
   // Create or re-activate the account, then mark the invite accepted.
   const [existing] = await db

@@ -2,16 +2,19 @@
 
 import { requireWrite } from "@/lib/dal";
 import { REGISTRY, applyUndo } from "@/lib/undo";
-import type { ActionResult, UndoToken } from "@/lib/undo-types";
+import { verifyToken } from "@/lib/undo-sign";
+import type { ActionResult, SignedUndoToken } from "@/lib/undo-types";
 
 /**
- * Reverse a single mutation from the token its action returned. The token comes
- * from the client, so we NEVER trust it for authorization: we re-check the
- * caller still has write access to the affected module (settings tokens require
- * admin) before applying anything. Re-running an op the caller could already do
- * themselves — so undo grants no new power.
+ * Reverse a single mutation from the signed token its action returned. The token
+ * comes from the client, so it is NEVER trusted: its HMAC signature is verified
+ * first (rejecting any forged/tampered snapshot — see undo-sign.ts), then the
+ * caller's write access to the affected module is re-checked (settings tokens
+ * require admin) before anything is applied. Undo only ever replays the exact
+ * server-produced snapshot, granting no new power.
  */
-export async function performUndo(token: UndoToken | undefined): Promise<ActionResult> {
+export async function performUndo(signed: SignedUndoToken | undefined): Promise<ActionResult> {
+  const token = verifyToken(signed);
   if (!token) return { error: "Nothing to undo." };
 
   const moduleKey = token.op === "settings" ? "admin" : REGISTRY[token.key]?.module;

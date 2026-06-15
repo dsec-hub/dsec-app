@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { taskBoards, tasks } from "@/db/workspace-schema";
 import { requireWrite } from "@/lib/dal";
 import { int, str } from "@/lib/form-data";
-import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
+import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
 import { logMutation } from "@/lib/usage";
 import { DEFAULT_BOARD_COLUMNS } from "@/lib/workspace-options";
@@ -71,7 +71,7 @@ export async function archiveTask(id: number): Promise<FormState> {
     .where(eq(tasks.id, id));
   await logMutation(user, "archive", "task", id);
   revalidateTasks();
-  return { ok: true, message: "Task archived", undo: { op: "update", key: "task", id, prev: { archived: false } } };
+  return { ok: true, message: "Task archived", undo: archiveToken("task", id) };
 }
 
 export async function deleteTask(id: number): Promise<FormState> {

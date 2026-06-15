@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { people } from "@/db/schema";
 import { requireWrite } from "@/lib/dal";
 import { bool, int, str } from "@/lib/form-data";
-import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
+import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
 
 export type FormState = ActionResult;
@@ -74,7 +74,7 @@ export async function archivePerson(id: number): Promise<FormState> {
   return {
     ok: true,
     message: "Person archived",
-    undo: { op: "update", key: "person", id, prev: { archived: false } },
+    undo: archiveToken("person", id),
   };
 }
 

@@ -36,10 +36,18 @@ export type UndoToken =
   | { op: "settings"; prev: Record<string, string | null>; paths: string[] };
 
 /**
+ * A signed, opaque undo token as it crosses to the client. The browser treats it
+ * as a string and hands it straight back to `performUndo`, which verifies the
+ * signature before parsing it back into an `UndoToken` (see undo-sign.ts). The
+ * client never sees or can tamper with the snapshot inside.
+ */
+export type SignedUndoToken = string;
+
+/**
  * What every undoable action returns — a superset of the old per-section
- * `FormState`. `message` is the toast headline; `undo` (when present) becomes
- * the toast's Undo button.
+ * `FormState`. `message` is the toast headline; `undo` (when present, the signed
+ * token) becomes the toast's Undo button.
  */
 export type ActionResult =
-  | { error?: string; ok?: boolean; message?: string; undo?: UndoToken }
+  | { error?: string; ok?: boolean; message?: string; undo?: SignedUndoToken }
   | undefined;

@@ -29,6 +29,35 @@ function apiEnv(): { base: string; key: string } | null {
 }
 
 /**
+ * Confirm media `id` actually belongs to (entityType, entityId).
+ *
+ * The delete/management actions authorize on the *client-supplied* entityType
+ * (which selects the module for requireWrite) but act on an `id` that is
+ * independent of it. Without this check a user with write to one media module
+ * could delete another module's media by passing a mismatched entityType + the
+ * other module's id. Listing the claimed entity's media and checking membership
+ * re-binds the id to the entity, so requireWrite(entityType's module) is sound.
+ */
+async function mediaBelongsTo(
+  env: { base: string; key: string },
+  entityType: EntityType,
+  entityId: number,
+  id: number,
+): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${env.base}/media?entity_type=${encodeURIComponent(entityType)}&entity_id=${entityId}`,
+      { headers: { Authorization: `Bearer ${env.key}` }, cache: "no-store" },
+    );
+    if (!res.ok) return false;
+    const items = (await res.json()) as Array<{ id: number }>;
+    return items.some((m) => m.id === id);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Upload one already-cropped image for an event/project. The dsec-api `/media`
  * endpoint (write scope) compresses it to WebP + PNG and stores it in Supabase;
  * we only forward the multipart body. Image processing never runs in the app.
@@ -97,6 +126,12 @@ export async function deleteMedia(
 
   const env = apiEnv();
   if (!env) return { error: "Image management needs DSEC_API_URL + DSEC_API_KEY." };
+
+  // Object-level auth: ensure the asset really belongs to the claimed entity
+  // before deleting (requireWrite only gated the claimed entityType's module).
+  if (!(await mediaBelongsTo(env, entityType, entityId, id))) {
+    return { error: "That image doesn't belong to this item." };
+  }
 
   try {
     const res = await fetch(`${env.base}/media/${id}`, {

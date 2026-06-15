@@ -8,7 +8,7 @@ import { sponsors } from "@/db/schema";
 import { sponsorContacts, tasks } from "@/db/workspace-schema";
 import { requireWrite } from "@/lib/dal";
 import { bool, int, jsonList, num, str } from "@/lib/form-data";
-import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
+import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
 import { logMutation } from "@/lib/usage";
 
@@ -70,7 +70,7 @@ export async function archiveSponsor(id: number): Promise<FormState> {
   return {
     ok: true,
     message: "Sponsor archived",
-    undo: { op: "update", key: "sponsor", id, prev: { archived: false } },
+    undo: archiveToken("sponsor", id),
   };
 }
 
@@ -192,6 +192,25 @@ export async function deleteSponsorDocument(
   const user = await requireWrite("sponsors");
   const env = apiEnv();
   if (env) {
+    // Object-level auth: confirm the attachment belongs to THIS sponsor before
+    // deleting, since the id is otherwise independent of the sponsorId argument.
+    let belongs = false;
+    try {
+      const res = await fetch(
+        `${env.base}/attachments?entity_type=sponsor&entity_id=${sponsorId}`,
+        { headers: { Authorization: `Bearer ${env.key}` }, cache: "no-store" },
+      );
+      if (res.ok) {
+        const items = (await res.json()) as Array<{ id: number }>;
+        belongs = items.some((a) => a.id === attachmentId);
+      }
+    } catch {
+      belongs = false;
+    }
+    if (!belongs) {
+      revalidatePath(`/sponsors/${sponsorId}`);
+      return;
+    }
     try {
       await fetch(`${env.base}/attachments/${attachmentId}`, {
         method: "DELETE",

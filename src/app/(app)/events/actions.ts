@@ -9,7 +9,7 @@ import { requireWrite } from "@/lib/dal";
 import { bool, int, jsonList, str, tierList } from "@/lib/form-data";
 import { DUSA_STATUSES } from "@/lib/options";
 import { apiEnv } from "@/lib/reviews";
-import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
+import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
 
 export type FormState = ActionResult;
@@ -86,7 +86,7 @@ export async function archiveEvent(id: number): Promise<FormState> {
   return {
     ok: true,
     message: "Event archived",
-    undo: { op: "update", key: "event", id, prev: { archived: false } },
+    undo: archiveToken("event", id),
   };
 }
 

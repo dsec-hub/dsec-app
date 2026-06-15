@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { appRole, appSetting, appUser, committee, events, finance, people, sponsors } from "@/db/schema";
 import { eventSpeakers, eventSponsors, projects, taskBoards, tasks } from "@/db/workspace-schema";
 import type { ModuleKey } from "@/lib/rbac";
+import { signToken } from "@/lib/undo-sign";
 import type { UndoKey, UndoToken } from "@/lib/undo-types";
 
 type Reg = {
@@ -69,21 +70,29 @@ async function readRow(key: UndoKey, id: number): Promise<Record<string, unknown
   return row as Record<string, unknown> | undefined;
 }
 
+// The snapshot/create helpers return a SIGNED token string (see undo-sign.ts) so
+// the snapshot can't be tampered with on its round-trip through the client.
+
 /** Snapshot a row so a later hard delete can be reversed. Call BEFORE deleting. */
-export async function snapshotForDelete(key: UndoKey, id: number): Promise<UndoToken | undefined> {
+export async function snapshotForDelete(key: UndoKey, id: number): Promise<string | undefined> {
   const row = await readRow(key, id);
-  return row ? { op: "delete", key, row } : undefined;
+  return row ? signToken({ op: "delete", key, row }) : undefined;
 }
 
 /** Snapshot prior values so an update/archive can be reversed. Call BEFORE updating. */
-export async function snapshotForUpdate(key: UndoKey, id: number): Promise<UndoToken | undefined> {
+export async function snapshotForUpdate(key: UndoKey, id: number): Promise<string | undefined> {
   const row = await readRow(key, id);
-  return row ? { op: "update", key, id, prev: row } : undefined;
+  return row ? signToken({ op: "update", key, id, prev: row }) : undefined;
 }
 
 /** Build a token that reverses a create by deleting the freshly-inserted row. */
-export function createToken(key: UndoKey, id: number | undefined | null): UndoToken | undefined {
-  return id == null ? undefined : { op: "create", key, id };
+export function createToken(key: UndoKey, id: number | undefined | null): string | undefined {
+  return id == null ? undefined : signToken({ op: "create", key, id });
+}
+
+/** Token that reverses an archive — restores `archived = false` on the row. */
+export function archiveToken(key: UndoKey, id: number): string {
+  return signToken({ op: "update", key, id, prev: { archived: false } });
 }
 
 /**

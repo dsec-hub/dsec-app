@@ -8,7 +8,7 @@ import { projects } from "@/db/workspace-schema";
 import { requireWrite } from "@/lib/dal";
 import { bool, int, str } from "@/lib/form-data";
 import { logMutation } from "@/lib/usage";
-import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
+import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
 
 export type FormState = ActionResult;
@@ -100,7 +100,7 @@ export async function archiveProject(id: number): Promise<FormState> {
   return {
     ok: true,
     message: "Project archived",
-    undo: { op: "update", key: "project", id, prev: { archived: false } },
+    undo: archiveToken("project", id),
   };
 }
 

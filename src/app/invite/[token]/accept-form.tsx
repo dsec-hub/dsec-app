@@ -32,7 +32,7 @@ export function AcceptForm({
         <TextInput name="name" defaultValue={defaultName ?? ""} autoComplete="name" />
       </Field>
 
-      <Field label="Password" hint="At least 8 characters.">
+      <Field label="Password" hint="At least 12 characters.">
         <TextInput type="password" name="password" required autoComplete="new-password" />
       </Field>
 

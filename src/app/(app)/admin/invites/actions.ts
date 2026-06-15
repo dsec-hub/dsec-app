@@ -52,6 +52,19 @@ export async function createInvite(_prev: InviteState, fd: FormData): Promise<In
     return { error: "Someone already has an account with that email." };
   }
 
+  // Resolve the invite-link origin BEFORE writing anything — in production this
+  // requires APP_URL (see getAppUrl), so fail cleanly rather than leaving an
+  // orphan invite row if it's misconfigured.
+  let origin: string;
+  try {
+    origin = await getAppUrl();
+  } catch {
+    return {
+      error:
+        "APP_URL isn't set, so invite links can't be built securely. Set APP_URL in the environment and try again.",
+    };
+  }
+
   // Supersede any earlier pending invites for the same address.
   await db
     .update(appInvite)
@@ -69,7 +82,7 @@ export async function createInvite(_prev: InviteState, fd: FormData): Promise<In
     expiresAt: expiryISO(),
   });
 
-  const link = `${await getAppUrl()}/invite/${raw}`;
+  const link = `${origin}/invite/${raw}`;
   const { sent, error } = await sendInviteEmail({
     to: email,
     link,
