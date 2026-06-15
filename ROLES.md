@@ -5,26 +5,50 @@ and invites from **/admin**; everyone else sees only the modules their role gran
 
 ## Concepts
 
-- **Modules** — gateable areas: `events`, `people`, `sponsors`, `finance`, `admin`.
-  The **Overview** (`/`) is always available to any active user.
+- **Modules** — gateable areas: `events`, `people`, `sponsors`, `finance`, `tasks`,
+  `projects`, `members`, `meetings`, `documents`, `admin`. The **Dashboard** (`/`,
+  which redirects to `/dashboard`) is always available to any active user.
+- **Read vs write** — each module is granted as **View** (`modules`) or **Edit**
+  (`writeModules` ⊆ `modules`); write always implies read.
 - **Role** — a named set of modules (stored in `app_role`). A role that includes
   the `admin` module is a **superuser**: full access to every module plus the
   admin panel.
-- **User** (`app_user`) — has one role (`app_user.role_id`).
+- **User** (`app_user`) — has one role (`app_user.role_id`) and an optional linked
+  roster record (`app_user.person_id`) used for object-level access (below).
 - **Invite** (`app_invite`) — an emailed, single-use, 7-day link that lets someone
   set a password and join with a pre-assigned role.
 
 Built-in roles seeded by setup: **Admin** (system, full access), **Exec** (all
 operational modules), **Events Lead**, **Sponsorship**, **Treasurer**, **Viewer**
-(overview only). Admins can create/edit/delete custom roles in **/admin/roles**.
+(dashboard only). Admins can create/edit/delete custom roles in **/admin/roles**.
+
+## Object-level access (ownership)
+
+Layered **on top of** the module RBAC and **purely additive** — it only ever
+*grants* extra scoped access, never restricts a role grant:
+
+- A user who **leads a project** (`projects.lead_id` = their `person_id`) but is
+  **not** granted the whole Projects module still sees **that project and its
+  tasks — read only** — in the nav, the projects list (only theirs; no
+  cross-project stats), and the detail page. Editing stays module-gated, so a
+  scoped owner can never be escalated to a writer.
+- A member who should only touch tasks gets exactly the **Tasks** module and
+  nothing else.
+
+The pure decisions live in `lib/rbac.ts` (`isOwner`, `scopeFor`, unit-tested in
+`lib/rbac.test.ts` — `npx tsx src/lib/rbac.test.ts`); the DB lookups in
+`lib/scope.ts`. The shape generalises to `events.event_lead_id` /
+`tasks.assignee_id` — add a `<module>Scope` + `requireXView` pair per module.
 
 ## Enforcement (defense in depth)
 
 1. **Proxy** (`proxy.ts` → `auth.config.ts`) — coarse route gate from the JWT
    module snapshot.
-2. **DAL** (`lib/dal.ts`) — `requireModule(key)` / `requireAdmin()` re-read the DB
-   on every page and Server Action, so role changes take effect immediately.
-3. **Nav** — the sidebar only shows modules the user can access.
+2. **DAL** (`lib/dal.ts`) — `requireModule(key)` / `requireWrite(key)` /
+   `requireAdmin()` re-read the DB on every page and Server Action, so role
+   changes take effect immediately. Object-level views use `lib/scope.ts`.
+3. **Nav** — the sidebar only shows modules the user can access (module grant or
+   scoped ownership).
 
 ## One-time setup
 
@@ -58,4 +82,6 @@ APP_URL=https://your-app.example.com        # used to build invite links
 
 If `RESEND_API_KEY` is **not** set, invites still work: the admin UI shows a
 **copyable invite link** to share manually (and the link is logged server-side).
-`APP_URL` falls back to the request's host when unset.
+`APP_URL` is **required in production** — invite links carry a single-use token,
+so the origin is never derived from the (spoofable) `Host` header there; it only
+falls back to the request host in local dev.
