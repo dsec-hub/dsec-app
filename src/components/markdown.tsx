@@ -288,6 +288,6 @@ function parseBlocks(lines: string[], keyPrefix: string): React.ReactNode[] {
 }
 
 export function Markdown({ content, className }: { content: string; className?: string }) {
-  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const lines = (content ?? "").replace(/\r\n/g, "\n").split("\n");
   return <div className={cn("space-y-3", className)}>{parseBlocks(lines, "b")}</div>;
 }

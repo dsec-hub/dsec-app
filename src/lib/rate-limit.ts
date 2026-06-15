@@ -22,12 +22,33 @@ const upstashConfigured =
 // One Redis client, reused across warm invocations. Built only when configured.
 const redis = upstashConfigured ? Redis.fromEnv() : null;
 
-/** Per-IP limit on every matched route — catches scripted/abusive traffic. */
+/**
+ * Per-IP limit for ANONYMOUS traffic on matched routes (almost only /signin
+ * and /invite — everything else redirects to sign-in before getting far).
+ * Kept tight because legitimate anonymous traffic is low-volume; this is the
+ * scripting/credential-probing guard.
+ */
 const general = redis
   ? new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(120, "60 s"),
       prefix: "rl:app:ip",
+      analytics: false,
+    })
+  : null;
+
+/**
+ * Per-USER limit for signed-in sessions, keyed by user id. Sized for real
+ * dashboard use — a single action fans out into prefetches, server actions and
+ * media-proxy calls, so the ceiling is high enough that humans never hit it
+ * while still bounding a runaway script on one account. This is the limiter an
+ * authed admin draws from instead of sharing the anonymous per-IP bucket.
+ */
+const perUser = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(1000, "60 s"),
+      prefix: "rl:app:user",
       analytics: false,
     })
   : null;
@@ -68,10 +89,17 @@ export function getClientIp(req: Request): string {
   return "0.0.0.0";
 }
 
-/** Per-IP limiter for general traffic. Fails open if Upstash is not configured. */
+/** Per-IP limiter for anonymous traffic. Fails open if Upstash is not configured. */
 export async function limitByIp(ip: string): Promise<LimitResult> {
   if (!general) return PASS;
   const { success, reset } = await general.limit(ip);
+  return { success, reset };
+}
+
+/** Generous per-user limiter for authenticated sessions. Fails open. */
+export async function limitByUser(userId: string): Promise<LimitResult> {
+  if (!perUser) return PASS;
+  const { success, reset } = await perUser.limit(userId);
   return { success, reset };
 }
 

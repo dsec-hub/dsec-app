@@ -454,8 +454,8 @@ function TicketTiers({
   const serialized = JSON.stringify(
     tiers
       .map((t) => ({
-        label: t.label.trim(),
-        price: t.price.trim() === "" ? null : Number(t.price),
+        label: (t.label ?? "").trim(),
+        price: (t.price ?? "").trim() === "" ? null : Number(t.price),
       }))
       .filter((t) => t.label && (t.price === null || !Number.isNaN(t.price))),
   );
@@ -467,7 +467,7 @@ function TicketTiers({
     <div className="flex flex-col gap-2">
       <input type="hidden" name="ticket_tiers" value={serialized} />
       {tiers.map((t, i) => {
-        const free = t.price.trim() === "0";
+        const free = (t.price ?? "").trim() === "0";
         return (
           <div key={i} className="flex items-center gap-2">
             <TextInput
