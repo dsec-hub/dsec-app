@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { StatTile } from "@/components/dashboard";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
-import { requireModule } from "@/lib/dal";
+import { requireUser } from "@/lib/dal";
 import type { BadgeVariant } from "@/lib/options";
 import { canWrite } from "@/lib/rbac";
+import { projectScope } from "@/lib/scope";
 import {
   getEventOptions,
   getPersonOptions,
@@ -35,33 +37,48 @@ function projectStatusVariant(status: string | null | undefined): BadgeVariant {
 }
 
 export default async function ProjectsPage() {
-  const me = await requireModule("projects");
-  const writable = canWrite(me.modules, me.writeModules, "projects");
-  const [projects, stats, people, events] = await Promise.all([
-    getProjects(),
-    getProjectStats(),
-    getPersonOptions(),
-    getEventOptions(),
-  ]);
+  const me = await requireUser();
+  // Module access → all projects; a lead without the module → only theirs
+  // (read-only); neither → bounce. See lib/scope.ts.
+  const scope = await projectScope(me);
+  if (scope === "none") redirect("/dashboard");
+  const full = scope === "full";
+  const writable = full && canWrite(me.modules, me.writeModules, "projects");
+
+  const projects = await getProjects(full ? {} : { leadId: me.personId ?? -1 });
+  // Stats span ALL projects, so only show them to module-holders (a scoped lead
+  // must not learn the totals). Option lists are only needed for the New form.
+  const stats = full ? await getProjectStats() : null;
+  const [people, events] = writable
+    ? await Promise.all([getPersonOptions(), getEventOptions()])
+    : [[], []];
 
   return (
     <>
       <PageHeader
         title="Projects"
-        description="What the club is building — community projects, tools, and showcases."
+        description={
+          full
+            ? "What the club is building — community projects, tools, and showcases."
+            : "The projects you lead."
+        }
         breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Projects" }]}
         action={writable && <NewProjectButton people={people} events={events} />}
       />
 
-      <div className="mb-6 grid grid-cols-3 gap-4">
-        <StatTile label="Total" value={stats.total} accent />
-        <StatTile label="Public" value={stats.public} sub="visible on the site" />
-        <StatTile label="Shipped" value={stats.shipped} tone="success" sub="completed or showcased" />
-      </div>
+      {stats && (
+        <div className="mb-6 grid grid-cols-3 gap-4">
+          <StatTile label="Total" value={stats.total} accent />
+          <StatTile label="Public" value={stats.public} sub="visible on the site" />
+          <StatTile label="Shipped" value={stats.shipped} tone="success" sub="completed or showcased" />
+        </div>
+      )}
 
       {projects.length === 0 ? (
         <Card>
-          <EmptyState>No projects yet — add the first one.</EmptyState>
+          <EmptyState>
+            {full ? "No projects yet — add the first one." : "You don't lead any projects yet."}
+          </EmptyState>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

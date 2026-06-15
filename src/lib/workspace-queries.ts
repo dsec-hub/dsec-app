@@ -279,9 +279,11 @@ export async function getTasksDueSoon(days = 14, limit = 12) {
 // Projects
 // ===========================================================================
 
-export async function getProjects(opts: { publicOnly?: boolean } = {}) {
+export async function getProjects(opts: { publicOnly?: boolean; leadId?: number } = {}) {
   const conds = [eq(projects.archived, false)];
   if (opts.publicOnly) conds.push(eq(projects.isPublic, true));
+  // Scoped (non-module) access: a lead sees only the projects they lead.
+  if (opts.leadId != null) conds.push(eq(projects.leadId, opts.leadId));
   return db
     .select({
       id: projects.id, name: projects.name, slug: projects.slug, summary: projects.summary,

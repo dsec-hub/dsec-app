@@ -118,3 +118,33 @@ export function levelsToArrays(levels: Record<string, AccessLevel>): {
     writeModules: sanitizeWriteModules(read, write),
   };
 }
+
+// --- Object-level (ownership) access ------------------------------------------
+// Layered ON TOP of the module RBAC above, and purely ADDITIVE: a user who lacks
+// a module can still reach the specific records they OWN (lead / assignee), plus
+// those records' tasks. Derived from the existing owner columns (no schema
+// change) — so a role grant is never weakened, only a scoped grant is added.
+// These are the pure decisions; the DB lookups live in lib/scope.ts.
+
+/** How a user may access an ownable module:
+ *  - "full":  has the module → every record (the existing behaviour).
+ *  - "owned": lacks the module but owns ≥1 record → only those records.
+ *  - "none":  no access. */
+export type ScopedAccess = "full" | "owned" | "none";
+
+/** A record is "owned" by the user when its owner column (e.g. project.leadId,
+ * event.eventLeadId) matches the user's linked person id. A login with no
+ * roster link (personId null) owns nothing. */
+export function isOwner(
+  personId: number | null | undefined,
+  ownerId: number | null | undefined,
+): boolean {
+  return personId != null && ownerId != null && personId === ownerId;
+}
+
+/** Resolve a user's overall access to an ownable module from the module grant
+ * and whether they own any record in it. */
+export function scopeFor(hasModule: boolean, ownsAny: boolean): ScopedAccess {
+  if (hasModule) return "full";
+  return ownsAny ? "owned" : "none";
+}

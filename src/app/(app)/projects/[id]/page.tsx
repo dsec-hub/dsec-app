@@ -4,10 +4,10 @@ import { notFound } from "next/navigation";
 import { Markdown } from "@/components/markdown";
 import { RelatedTasks } from "@/components/related-tasks";
 import { Badge, Card, PageHeader, SectionCard, buttonSecondary } from "@/components/ui";
-import { requireModule } from "@/lib/dal";
+import { requireUser } from "@/lib/dal";
 import { formatDate } from "@/lib/format";
 import { getEventById } from "@/lib/queries";
-import { canWrite } from "@/lib/rbac";
+import { requireProjectView } from "@/lib/scope";
 import { projectStatusVariant } from "@/lib/workspace-options";
 import { getPersonOptions, getProjectById, getRelatedTasks } from "@/lib/workspace-queries";
 
@@ -16,17 +16,19 @@ export default async function ProjectDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const me = await requireModule("projects");
-  const writable = canWrite(me.modules, me.writeModules, "projects");
+  const me = await requireUser();
   const { id } = await params;
   const pid = Number(id);
   if (Number.isNaN(pid)) notFound();
-  const [project, people, relatedTasks] = await Promise.all([
-    getProjectById(pid),
+  const project = await getProjectById(pid);
+  if (!project) notFound();
+  // Access: module-holders see any project; a lead sees the project they lead
+  // (read-only); anyone else is bounced. See lib/scope.ts.
+  const { writable } = await requireProjectView(me, project);
+  const [people, relatedTasks] = await Promise.all([
     getPersonOptions(),
     getRelatedTasks("project", pid),
   ]);
-  if (!project) notFound();
   const lead = people.find((p) => p.id === project.leadId)?.name;
   // Cross-link: the event this project came out of (if any).
   const relatedEvent = project.relatedEventId ? await getEventById(project.relatedEventId) : null;

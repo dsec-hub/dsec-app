@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { AppShell, type NavGroup, type NavItem } from "@/components/app-shell";
 import { getCurrentUser } from "@/lib/dal";
 import { canAccess } from "@/lib/rbac";
+import { canSeeProjects } from "@/lib/scope";
 import { buildThemeCss } from "@/lib/theme";
 import { logAccess } from "@/lib/usage";
 
@@ -70,11 +71,20 @@ export default async function AppLayout({
   after(() => logAccess({ id: user.id, email: user.email }));
 
   const name = user.name ?? user.email;
-  // Gate each item by module, then drop any group left with no visible items.
+  // Object-level access: a project lead without the Projects module still gets a
+  // Projects nav entry (showing only their led projects). Only costs a query for
+  // users who lack the module. See lib/scope.ts.
+  const projectsVisible = await canSeeProjects(user);
+
+  // Gate each item by module (or scoped ownership), then drop any empty group.
   const groups: NavGroup[] = NAV.map((section) => ({
     label: section.label,
     items: section.items
-      .filter((n) => !n.module || canAccess(user.modules, n.module))
+      .filter((n) => {
+        if (!n.module) return true;
+        if (n.module === "projects") return projectsVisible;
+        return canAccess(user.modules, n.module);
+      })
       .map(({ href, label, icon }) => ({ href, label, icon })),
   })).filter((section) => section.items.length > 0);
 
