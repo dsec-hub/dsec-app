@@ -9,10 +9,12 @@ import { cn } from "@/lib/format";
 import { getEventById, getPeopleOptions, getSponsorOptions } from "@/lib/queries";
 import { canWrite } from "@/lib/rbac";
 import { fetchReviewSummary } from "@/lib/reviews";
-import { getMedia } from "@/lib/workspace-queries";
+import { getEventSpeakers, getEventSponsors, getMedia } from "@/lib/workspace-queries";
 
 import { archiveEvent, deleteEvent, updateEvent } from "../../actions";
 import { EventForm } from "../../event-form";
+import { EventSpeakers } from "../event-speakers";
+import { EventSponsors } from "../event-sponsors";
 import { ReviewPanel } from "../../review-panel";
 
 export default async function EditEventPage({
@@ -26,13 +28,16 @@ export default async function EditEventPage({
   const eventId = Number(id);
   if (Number.isNaN(eventId)) notFound();
 
-  const [event, people, sponsors, committees, media] = await Promise.all([
-    getEventById(eventId),
-    getPeopleOptions(),
-    getSponsorOptions(),
-    getCommitteeOptions(),
-    getMedia("event", eventId),
-  ]);
+  const [event, people, sponsors, committees, media, speakers, eventSponsors] =
+    await Promise.all([
+      getEventById(eventId),
+      getPeopleOptions(),
+      getSponsorOptions(),
+      getCommitteeOptions(),
+      getMedia("event", eventId),
+      getEventSpeakers(eventId),
+      getEventSponsors(eventId),
+    ]);
   if (!event) notFound();
 
   // Best-effort live stats; only hit the API when a form actually exists.
@@ -84,6 +89,22 @@ export default async function EditEventPage({
           entityType="event"
           entityId={eventId}
           existing={media}
+          canWrite={writable}
+        />
+      </div>
+      <div className="mt-6">
+        <EventSpeakers
+          eventId={eventId}
+          speakers={speakers}
+          people={people}
+          canWrite={writable}
+        />
+      </div>
+      <div className="mt-6">
+        <EventSponsors
+          eventId={eventId}
+          linked={eventSponsors}
+          sponsorOptions={sponsors}
           canWrite={writable}
         />
       </div>

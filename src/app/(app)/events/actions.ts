@@ -40,7 +40,7 @@ function parseEvent(fd: FormData) {
     externalGuests: bool(fd, "external_guests"),
     expectedAttendance: int(fd, "expected_attendance"),
     actualAttendance: int(fd, "actual_attendance"),
-    notes: str(fd, "notes"),
+    description: str(fd, "description"),
   };
 }
 

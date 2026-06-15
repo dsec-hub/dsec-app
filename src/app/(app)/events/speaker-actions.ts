@@ -1,0 +1,127 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { and, eq } from "drizzle-orm";
+
+import { db } from "@/db";
+import { eventSpeakers, eventSponsors } from "@/db/workspace-schema";
+import { requireWrite } from "@/lib/dal";
+import { int, str } from "@/lib/form-data";
+import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
+import type { ActionResult } from "@/lib/undo-types";
+import { logMutation } from "@/lib/usage";
+
+export type FormState = ActionResult;
+
+function revalidateEvent(eventId: number) {
+  revalidatePath(`/events/${eventId}/edit`);
+  revalidatePath("/events");
+}
+
+// --- Event speakers --------------------------------------------------------
+// A speaker is either a linked person (autofills the name) or a free-text guest.
+// The headshot is uploaded separately via the MediaManager (entity "speaker").
+
+export async function createEventSpeaker(
+  eventId: number,
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const user = await requireWrite("events");
+  const personId = int(fd, "person_id");
+  const name = str(fd, "name");
+  if (!personId && !name) return { error: "Pick a person or type a speaker name." };
+  const [row] = await db
+    .insert(eventSpeakers)
+    .values({
+      eventId,
+      personId,
+      name,
+      title: str(fd, "title"),
+      bio: str(fd, "bio"),
+    })
+    .returning({ id: eventSpeakers.id });
+  await logMutation(user, "create", "event-speaker", row?.id);
+  revalidateEvent(eventId);
+  return { ok: true, message: "Speaker added", undo: createToken("event_speaker", row?.id) };
+}
+
+export async function updateEventSpeaker(
+  speakerId: number,
+  eventId: number,
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const user = await requireWrite("events");
+  const personId = int(fd, "person_id");
+  const name = str(fd, "name");
+  if (!personId && !name) return { error: "Pick a person or type a speaker name." };
+  const undo = await snapshotForUpdate("event_speaker", speakerId);
+  await db
+    .update(eventSpeakers)
+    .set({
+      personId,
+      name,
+      title: str(fd, "title"),
+      bio: str(fd, "bio"),
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(eventSpeakers.id, speakerId));
+  await logMutation(user, "update", "event-speaker", speakerId);
+  revalidateEvent(eventId);
+  return { ok: true, message: "Speaker updated", undo };
+}
+
+export async function deleteEventSpeaker(
+  speakerId: number,
+  eventId: number,
+): Promise<FormState> {
+  const user = await requireWrite("events");
+  // Snapshot before delete so Undo re-inserts the row with the SAME id — which
+  // re-links any uploaded headshot (media keyed by speaker id). The Supabase
+  // photo objects are intentionally left in place for exactly this reason.
+  const undo = await snapshotForDelete("event_speaker", speakerId);
+  await db.delete(eventSpeakers).where(eq(eventSpeakers.id, speakerId));
+  await logMutation(user, "delete", "event-speaker", speakerId);
+  revalidateEvent(eventId);
+  return { ok: true, message: "Speaker removed", undo };
+}
+
+// --- Event sponsors --------------------------------------------------------
+// Links an existing sponsor to this event (many-to-many). The logo lives on the
+// sponsor and is reused across events.
+
+export async function addEventSponsor(
+  eventId: number,
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const user = await requireWrite("events");
+  const sponsorId = int(fd, "sponsor_id");
+  if (!sponsorId) return { error: "Pick a sponsor to add." };
+  const existing = await db
+    .select({ id: eventSponsors.id })
+    .from(eventSponsors)
+    .where(and(eq(eventSponsors.eventId, eventId), eq(eventSponsors.sponsorId, sponsorId)))
+    .limit(1);
+  if (existing.length) return { error: "That sponsor is already linked to this event." };
+  const [row] = await db
+    .insert(eventSponsors)
+    .values({ eventId, sponsorId, tier: str(fd, "tier") })
+    .returning({ id: eventSponsors.id });
+  await logMutation(user, "create", "event-sponsor", row?.id);
+  revalidateEvent(eventId);
+  return { ok: true, message: "Sponsor linked", undo: createToken("event_sponsor", row?.id) };
+}
+
+export async function removeEventSponsor(
+  linkId: number,
+  eventId: number,
+): Promise<FormState> {
+  const user = await requireWrite("events");
+  const undo = await snapshotForDelete("event_sponsor", linkId);
+  await db.delete(eventSponsors).where(eq(eventSponsors.id, linkId));
+  await logMutation(user, "delete", "event-sponsor", linkId);
+  revalidateEvent(eventId);
+  return { ok: true, message: "Sponsor unlinked", undo };
+}

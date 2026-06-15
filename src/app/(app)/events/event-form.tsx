@@ -403,8 +403,8 @@ export function EventForm({
         </div>
       </fieldset>
 
-      <Field label="Notes">
-        <TextArea name="notes" defaultValue={e?.notes ?? ""} />
+      <Field label="Description" hint="Shown on the public website. Markdown supported.">
+        <TextArea name="description" rows={8} defaultValue={e?.description ?? ""} />
       </Field>
       </fieldset>
 

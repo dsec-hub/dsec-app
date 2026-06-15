@@ -76,6 +76,7 @@ export const sponsors = pgTable("sponsors", {
   valueAud: numeric("value_aud", { precision: 12, scale: 2 }),
   supportTypes: json("support_types").$type<string[]>(),
   dusaApproved: boolean("dusa_approved").default(false).notNull(),
+  showOnWebsite: boolean("show_on_website").default(false).notNull(),
   contactEmail: varchar("contact_email", { length: 256 }),
   website: varchar({ length: 256 }),
   nextAction: varchar("next_action", { length: 512 }),
@@ -201,6 +202,39 @@ export const sponsorContacts = pgTable("sponsor_contact", {
   archived: boolean().default(false).notNull(),
 });
 
+// --- event speakers --------------------------------------------------------
+// A speaker presenting at an event: a linked `people` row (autofills name/title)
+// or a free-text guest. The headshot lives in `media_asset`
+// (entityType="speaker", entityId=this row's id, role="photo").
+
+export const eventSpeakers = pgTable("event_speaker", {
+  id: serial().primaryKey(),
+  eventId: integer("event_id").notNull(),
+  personId: integer("person_id"),
+  name: varchar({ length: 256 }),
+  title: varchar({ length: 256 }),
+  bio: text(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: ts("created_at").defaultNow().notNull(),
+  updatedAt: ts("updated_at").defaultNow().notNull(),
+  archived: boolean().default(false).notNull(),
+});
+
+// --- event sponsors --------------------------------------------------------
+// Many-to-many event<->sponsor so an event can show a wall of sponsor logos.
+// The logo lives on the sponsor (media_asset entityType="sponsor", role="logo").
+
+export const eventSponsors = pgTable("event_sponsor", {
+  id: serial().primaryKey(),
+  eventId: integer("event_id").notNull(),
+  sponsorId: integer("sponsor_id").notNull(),
+  tier: varchar({ length: 64 }),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: ts("created_at").defaultNow().notNull(),
+  updatedAt: ts("updated_at").defaultNow().notNull(),
+  archived: boolean().default(false).notNull(),
+});
+
 // --- attachments (PDFs/images) ---------------------------------------------
 // Binaries live in Supabase Storage; this row holds only the URL + metadata.
 // Written by dsec-api (POST /attachments, which auto-compresses); read here.
@@ -286,15 +320,15 @@ export const financeTransactions = pgTable("finance_transaction", {
   kind: varchar({ length: 16 }),
 });
 
-// --- image media (events & projects) ---------------------------------------
+// --- image media (events, projects, sponsors, speakers) --------------------
 // Binaries live in Supabase Storage; this row holds only URLs + metadata.
 // Written by dsec-api (POST /media); read here for the dashboard gallery.
 
 export const mediaAssets = pgTable("media_asset", {
   id: serial().primaryKey(),
-  entityType: varchar("entity_type", { length: 16 }).notNull(), // event|project
+  entityType: varchar("entity_type", { length: 16 }).notNull(), // event|project|sponsor|speaker
   entityId: integer("entity_id").notNull(),
-  role: varchar({ length: 16 }).notNull(), // image|poster|banner
+  role: varchar({ length: 16 }).notNull(), // image|poster|banner|logo|photo
   altText: varchar("alt_text", { length: 512 }),
   originalFilename: varchar("original_filename", { length: 512 }),
   webpUrl: varchar("webp_url", { length: 1024 }).notNull(),

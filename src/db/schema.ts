@@ -119,7 +119,7 @@ export const events = pgTable("events", {
 	externalGuests: boolean("external_guests").default(false).notNull(),
 	expectedAttendance: integer("expected_attendance"),
 	actualAttendance: integer("actual_attendance"),
-	notes: text(),
+	description: text(),
 	// Post-event review form (Tally) — set by the dsec-api reviews feature when a
 	// form is created; null means none yet. URL is the public fill link.
 	reviewFormId: varchar("review_form_id", { length: 64 }),
@@ -152,6 +152,7 @@ export const sponsors = pgTable("sponsors", {
 	valueAud: numeric("value_aud", { precision: 12, scale:  2 }),
 	supportTypes: json("support_types").$type<string[]>(),
 	dusaApproved: boolean("dusa_approved").default(false).notNull(),
+	showOnWebsite: boolean("show_on_website").default(false).notNull(),
 	notes: text(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),

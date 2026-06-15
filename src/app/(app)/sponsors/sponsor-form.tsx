@@ -119,6 +119,17 @@ export function SponsorForm({
           defaultChecked={s?.dusaApproved ?? false}
         />
 
+        <div className="space-y-1">
+          <CheckboxField
+            label="Show on website"
+            name="show_on_website"
+            defaultChecked={s?.showOnWebsite ?? false}
+          />
+          <p className="pl-[26px] text-xs text-muted">
+            Publishes this sponsor’s logo on the public sponsor wall (needs a logo uploaded).
+          </p>
+        </div>
+
         <Field label="Notes">
           <TextArea name="notes" defaultValue={s?.notes ?? ""} />
         </Field>

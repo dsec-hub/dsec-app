@@ -11,6 +11,8 @@
 /** Registry keys for undoable tables — keep in sync with REGISTRY in undo.ts. */
 export type UndoKey =
   | "event"
+  | "event_speaker"
+  | "event_sponsor"
   | "finance"
   | "person"
   | "sponsor"

@@ -24,6 +24,7 @@ function parseSponsor(fd: FormData) {
     valueAud: num(fd, "value_aud"),
     supportTypes: jsonList(fd, "support_types"),
     dusaApproved: bool(fd, "dusa_approved"),
+    showOnWebsite: bool(fd, "show_on_website"),
     notes: str(fd, "notes"),
   };
 }

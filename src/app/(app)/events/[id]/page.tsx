@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CommitteeDot } from "@/components/committee-select";
+import { Markdown } from "@/components/markdown";
 import { MediaManager } from "@/components/media-manager";
 import { Badge, Card, PageHeader, SectionCard, buttonSecondary } from "@/components/ui";
 import { getCommitteeOptions } from "@/lib/committee-queries";
@@ -186,9 +187,11 @@ export default async function EventDetailPage({
         </SectionCard>
       )}
 
-      {event.notes && (
-        <SectionCard title="Notes" className="mb-6">
-          <p className="whitespace-pre-wrap p-5 text-sm text-foreground/90">{event.notes}</p>
+      {event.description && (
+        <SectionCard title="Description" className="mb-6">
+          <div className="p-5">
+            <Markdown content={event.description} />
+          </div>
         </SectionCard>
       )}
 

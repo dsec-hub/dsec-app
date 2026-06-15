@@ -18,7 +18,7 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/format";
 
-export type EntityType = "event" | "project";
+export type EntityType = "event" | "project" | "sponsor" | "speaker";
 
 export type MediaItem = {
   id: number;
@@ -30,16 +30,42 @@ export type MediaItem = {
   height: number | null;
 };
 
-type RoleDef = { value: string; label: string; aspect: number; hint: string };
+// `aspect: undefined` means free crop (logos keep their native proportions).
+type RoleDef = { value: string; label: string; aspect: number | undefined; hint: string };
 
-const ROLES: RoleDef[] = [
+const GALLERY_ROLES: RoleDef[] = [
   { value: "banner", label: "Banner", aspect: 16 / 9, hint: "Wide hero — 16:9" },
   { value: "image", label: "Image", aspect: 1, hint: "Square — 1:1" },
   { value: "poster", label: "Poster", aspect: 4 / 5, hint: "Instagram poster — 4:5" },
 ];
 
+// Which roles each entity supports. Single-role entities (sponsor logo, speaker
+// photo) hide the role selector. Sponsor logos crop freely + keep transparency.
+const ROLES_BY_ENTITY: Record<EntityType, RoleDef[]> = {
+  event: GALLERY_ROLES,
+  project: GALLERY_ROLES,
+  sponsor: [
+    { value: "logo", label: "Logo", aspect: undefined, hint: "Brand logo — transparent PNG works best; crop freely" },
+  ],
+  speaker: [
+    { value: "photo", label: "Photo", aspect: 1, hint: "Headshot — square 1:1" },
+  ],
+};
+
+// Per-entity copy for the section header / empty state / buttons.
+const SECTION_COPY: Record<EntityType, { title: string; add: string; empty: string }> = {
+  event: { title: "Images", add: "Add image", empty: "No images yet. Upload a banner, poster, or image — they show on the public site." },
+  project: { title: "Images", add: "Add image", empty: "No images yet. Upload a banner, poster, or image — they show on the public site." },
+  sponsor: { title: "Logo", add: "Add logo", empty: "No logo yet. Upload the sponsor's brand logo — it shows on the public site." },
+  speaker: { title: "Photo", add: "Add photo", empty: "No photo yet. Upload a headshot — it shows on the public site." },
+};
+
 function roleVariant(role: string) {
-  return role === "banner" ? "accent" : role === "poster" ? "success" : "neutral";
+  return role === "banner" || role === "logo"
+    ? "accent"
+    : role === "poster"
+      ? "success"
+      : "neutral";
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -176,24 +202,21 @@ export function MediaManager({
   canWrite?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const copy = SECTION_COPY[entityType];
 
   return (
     <SectionCard
-      title="Images"
+      title={copy.title}
       action={
         canWrite ? (
           <button type="button" className={buttonPrimary} onClick={() => setOpen(true)}>
-            Add image
+            {copy.add}
           </button>
         ) : undefined
       }
     >
       {existing.length === 0 ? (
-        <EmptyState>
-          {canWrite
-            ? "No images yet. Upload a banner, poster, or image — they show on the public site."
-            : "No images yet."}
-        </EmptyState>
+        <EmptyState>{canWrite ? copy.empty : `No ${copy.title.toLowerCase()} yet.`}</EmptyState>
       ) : (
         <div className="grid grid-cols-2 gap-4 px-5 pt-5 pb-4 sm:grid-cols-3">
           {existing.map((m) => (
@@ -209,7 +232,7 @@ export function MediaManager({
       )}
 
       {canWrite && (
-        <Modal open={open} onClose={() => setOpen(false)} title="Upload images">
+        <Modal open={open} onClose={() => setOpen(false)} title={`Upload ${copy.title.toLowerCase()}`}>
           <Uploader
             entityType={entityType}
             entityId={entityId}
@@ -302,7 +325,9 @@ function Uploader({
   entityId: number;
   onDone: () => void;
 }) {
-  const [role, setRole] = useState<RoleDef>(ROLES[0]);
+  const roles = ROLES_BY_ENTITY[entityType];
+  const singleRole = roles.length === 1;
+  const [role, setRole] = useState<RoleDef>(roles[0]);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [alt, setAlt] = useState("");
@@ -422,20 +447,22 @@ function Uploader({
     <div className="flex flex-col gap-4">
       <FormError>{state?.error}</FormError>
 
-      <Field label="Type" hint={bulk ? "Tag applied to every image in this batch." : role.hint}>
-        <SelectField
-          value={role.value}
-          onChange={(e) =>
-            setRole(ROLES.find((r) => r.value === e.target.value) ?? ROLES[0])
-          }
-        >
-          {ROLES.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </SelectField>
-      </Field>
+      {!singleRole && (
+        <Field label="Type" hint={bulk ? "Tag applied to every image in this batch." : role.hint}>
+          <SelectField
+            value={role.value}
+            onChange={(e) =>
+              setRole(roles.find((r) => r.value === e.target.value) ?? roles[0])
+            }
+          >
+            {roles.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </SelectField>
+        </Field>
+      )}
 
       <Field
         label="Image file"

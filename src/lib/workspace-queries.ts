@@ -1,11 +1,13 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
   attachments,
   documents,
+  eventSpeakers,
+  eventSponsors,
   events,
   financeReports,
   financeTransactions,
@@ -337,6 +339,92 @@ export async function getUpcomingEvents(limit = 8) {
     .limit(limit);
 }
 
+/** Speakers attached to an event, each with their (optional) headshot photos.
+ * Links resolve the person's name when the row has no free-text name. */
+export type EventSpeakerRow = Awaited<ReturnType<typeof getEventSpeakers>>[number];
+
+export async function getEventSpeakers(eventId: number) {
+  const rows = await db
+    .select({
+      id: eventSpeakers.id,
+      personId: eventSpeakers.personId,
+      name: eventSpeakers.name,
+      title: eventSpeakers.title,
+      bio: eventSpeakers.bio,
+      sortOrder: eventSpeakers.sortOrder,
+      personName: people.name,
+    })
+    .from(eventSpeakers)
+    .leftJoin(people, eq(eventSpeakers.personId, people.id))
+    .where(and(eq(eventSpeakers.eventId, eventId), eq(eventSpeakers.archived, false)))
+    .orderBy(asc(eventSpeakers.sortOrder), asc(eventSpeakers.id));
+  if (!rows.length) return [];
+  // Batch-load every speaker's photos in one query, then group by speaker id.
+  const photos = await db
+    .select()
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.archived, false),
+        eq(mediaAssets.entityType, "speaker"),
+        inArray(mediaAssets.entityId, rows.map((r) => r.id)),
+      ),
+    )
+    .orderBy(asc(mediaAssets.sortOrder), asc(mediaAssets.id));
+  const byId = new Map<number, typeof photos>();
+  for (const p of photos) {
+    const list = byId.get(p.entityId) ?? [];
+    list.push(p);
+    byId.set(p.entityId, list);
+  }
+  return rows.map((r) => ({
+    ...r,
+    displayName: r.name || r.personName || "Speaker",
+    photos: byId.get(r.id) ?? [],
+  }));
+}
+
+/** Sponsors linked to an event (for the logo wall), each with its logo. */
+export type EventSponsorRow = Awaited<ReturnType<typeof getEventSponsors>>[number];
+
+export async function getEventSponsors(eventId: number) {
+  const rows = await db
+    .select({
+      id: eventSponsors.id,
+      sponsorId: eventSponsors.sponsorId,
+      tier: eventSponsors.tier,
+      sortOrder: eventSponsors.sortOrder,
+      organisation: sponsors.organisation,
+      website: sponsors.website,
+    })
+    .from(eventSponsors)
+    .innerJoin(sponsors, eq(eventSponsors.sponsorId, sponsors.id))
+    .where(
+      and(
+        eq(eventSponsors.eventId, eventId),
+        eq(eventSponsors.archived, false),
+        eq(sponsors.archived, false),
+      ),
+    )
+    .orderBy(asc(eventSponsors.sortOrder), asc(eventSponsors.id));
+  if (!rows.length) return [];
+  const logos = await db
+    .select()
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.archived, false),
+        eq(mediaAssets.entityType, "sponsor"),
+        eq(mediaAssets.role, "logo"),
+        inArray(mediaAssets.entityId, rows.map((r) => r.sponsorId)),
+      ),
+    )
+    .orderBy(asc(mediaAssets.sortOrder), asc(mediaAssets.id));
+  const byId = new Map<number, (typeof logos)[number]>();
+  for (const l of logos) if (!byId.has(l.entityId)) byId.set(l.entityId, l);
+  return rows.map((r) => ({ ...r, logo: byId.get(r.sponsorId) ?? null }));
+}
+
 // ===========================================================================
 // Meetings + documents
 // ===========================================================================
@@ -539,8 +627,11 @@ export async function getDocumentById(id: number) {
 
 export type MediaItem = Awaited<ReturnType<typeof getMedia>>[number];
 
-/** Images attached to an event/project, ordered for the dashboard gallery. */
-export async function getMedia(entityType: "event" | "project", entityId: number) {
+/** The entity kinds that can own uploaded media (mirrors dsec-api ENTITY_TYPES). */
+export type MediaEntityType = "event" | "project" | "sponsor" | "speaker";
+
+/** Images attached to an entity, ordered for the dashboard gallery. */
+export async function getMedia(entityType: MediaEntityType, entityId: number) {
   return db
     .select()
     .from(mediaAssets)
@@ -552,6 +643,12 @@ export async function getMedia(entityType: "event" | "project", entityId: number
       ),
     )
     .orderBy(asc(mediaAssets.sortOrder), asc(mediaAssets.id));
+}
+
+/** A sponsor's brand logo (single image, role="logo"), or null. */
+export async function getSponsorLogo(sponsorId: number): Promise<MediaItem | null> {
+  const rows = await getMedia("sponsor", sponsorId);
+  return rows.find((m) => m.role === "logo") ?? rows[0] ?? null;
 }
 
 export type Option = { id: number; name: string };
