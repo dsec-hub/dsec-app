@@ -28,7 +28,7 @@ export function CopyableLink({ href, children }: { href: string; children: React
         href={href}
         target="_blank"
         rel="noreferrer"
-        className="text-accent underline underline-offset-2"
+        className="text-accent-text underline underline-offset-2"
       >
         {children}
       </a>
@@ -37,7 +37,7 @@ export function CopyableLink({ href, children }: { href: string; children: React
         onClick={copy}
         title={copied ? "Copied" : `Copy ${href}`}
         aria-label={copied ? "Link copied" : "Copy link"}
-        className="inline-flex translate-y-0.5 items-center text-muted/70 transition-colors hover:text-accent"
+        className="inline-flex translate-y-0.5 items-center text-muted/70 transition-colors hover:text-accent-text"
       >
         {copied ? (
           <Icons.check className="size-3.5" />

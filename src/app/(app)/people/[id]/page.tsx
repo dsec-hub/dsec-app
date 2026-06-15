@@ -153,7 +153,7 @@ export default async function PersonDetailPage({
                       href={l.href}
                       target={l.href.startsWith("mailto:") ? undefined : "_blank"}
                       rel="noreferrer"
-                      className="text-accent hover:underline"
+                      className="text-accent-text hover:underline"
                     >
                       {l.value}
                     </a>

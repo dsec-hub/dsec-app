@@ -52,7 +52,7 @@ export default async function MeetingsPage() {
               <li key={m.id} className="px-5 py-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <Link href={`/meetings/${m.id}`} className="text-sm font-medium hover:text-accent">
+                    <Link href={`/meetings/${m.id}`} className="text-sm font-medium hover:text-accent-text">
                       {m.title}
                     </Link>
                     <div className="mt-0.5 text-xs text-muted">

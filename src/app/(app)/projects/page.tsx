@@ -123,7 +123,7 @@ export default async function ProjectsPage() {
                   <Badge variant={projectStatusVariant(p.status)}>{p.status ?? "—"}</Badge>
                   {p.isPublic && <Badge variant="accent">Public</Badge>}
                   {p.featured && (
-                    <span className="text-accent" title="Featured" aria-label="Featured">
+                    <span className="text-accent-text" title="Featured" aria-label="Featured">
                       ★
                     </span>
                   )}

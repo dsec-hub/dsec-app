@@ -3,14 +3,20 @@ import Link from "next/link";
 import { cn } from "@/lib/format";
 import type { BadgeVariant } from "@/lib/options";
 
+// Shared keyboard-focus ring, applied to every button variant so focus is always
+// visible and consistent (WCAG 2.4.7); :focus-visible keeps it off for mouse use.
+// The brand pink doubles as the on-brand focus colour.
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface";
+
 export const buttonPrimary =
-  "inline-flex items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-60";
+  `inline-flex items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-60 ${focusRing}`;
 export const buttonSecondary =
-  "inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-elevated";
+  `inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-elevated ${focusRing}`;
 export const buttonGhost =
-  "inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-foreground";
+  `inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-foreground ${focusRing}`;
 export const buttonDanger =
-  "inline-flex items-center justify-center gap-1.5 rounded-md border border-danger/30 bg-danger/10 px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/20 disabled:opacity-60";
+  `inline-flex items-center justify-center gap-1.5 rounded-md border border-danger/30 bg-danger/10 px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/20 disabled:opacity-60 ${focusRing}`;
 
 export type Crumb = { label: string; href?: string };
 
@@ -30,7 +36,7 @@ export function Card({
 
 const badgeVariants: Record<BadgeVariant, string> = {
   neutral: "bg-elevated text-muted",
-  accent: "bg-accent/10 text-accent",
+  accent: "bg-accent/10 text-accent-text",
   success: "bg-success/10 text-success",
   warning: "bg-warning/10 text-warning",
   danger: "bg-danger/10 text-danger",
@@ -122,8 +128,28 @@ export function SectionCard({
   );
 }
 
-export function EmptyState({ children }: { children: React.ReactNode }) {
-  return <div className="px-5 py-10 text-center text-sm text-muted">{children}</div>;
+/**
+ * Empty state. Beyond the message it can surface a muted `icon` and an `action`
+ * (usually the section's "New …" CTA) so a first-run section teaches the
+ * interface instead of reading as a dead end. Both are optional, so existing
+ * `<EmptyState>message</EmptyState>` call sites are unaffected.
+ */
+export function EmptyState({
+  children,
+  icon,
+  action,
+}: {
+  children: React.ReactNode;
+  icon?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 px-5 py-12 text-center">
+      {icon && <div className="text-muted/40">{icon}</div>}
+      <div className="max-w-sm text-sm text-muted">{children}</div>
+      {action && <div className="mt-1">{action}</div>}
+    </div>
+  );
 }
 
 export function StatCard({

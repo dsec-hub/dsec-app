@@ -274,7 +274,7 @@ function MonthView({
               <div
                 className={cn(
                   "mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs tabular-nums",
-                  isToday && "bg-accent font-semibold text-white",
+                  isToday && "bg-accent font-semibold text-accent-foreground",
                 )}
               >
                 {d.getDate()}
@@ -315,7 +315,7 @@ function WeekView({
         const isToday = key === today;
         return (
           <div key={key} className="min-h-40 bg-surface p-2">
-            <div className={cn("mb-2 text-xs", isToday ? "font-semibold text-accent" : "text-muted")}>
+            <div className={cn("mb-2 text-xs", isToday ? "font-semibold text-accent-text" : "text-muted")}>
               {d.toLocaleDateString("en-AU", { weekday: "short" })} {d.getDate()}
             </div>
             <div className="flex flex-col gap-1">

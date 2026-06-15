@@ -21,7 +21,7 @@ export function StatTile({
   const toneClass = tone
     ? { success: "text-success", warning: "text-warning", danger: "text-danger" }[tone]
     : accent
-      ? "text-accent"
+      ? "text-accent-text"
       : "text-foreground";
   return (
     <Card className="p-5">

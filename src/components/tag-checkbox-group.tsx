@@ -43,7 +43,7 @@ export function TagCheckboxGroup({
               aria-pressed={active}
               className={
                 active
-                  ? "rounded-full border border-accent bg-accent/10 px-3 py-1 text-xs font-medium text-accent transition-colors"
+                  ? "rounded-full border border-accent bg-accent/10 px-3 py-1 text-xs font-medium text-accent-text transition-colors"
                   : "rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted transition-colors hover:bg-elevated"
               }
             >

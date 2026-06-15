@@ -58,7 +58,7 @@ export default async function SponsorsPage() {
         <Link href="/sponsors/leads" className="flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground">
           Leads
           {newLeads > 0 && (
-            <span className="rounded-full bg-accent/10 px-1.5 py-0.5 text-xs font-medium text-accent">
+            <span className="rounded-full bg-accent/10 px-1.5 py-0.5 text-xs font-medium text-accent-text">
               {newLeads}
             </span>
           )}

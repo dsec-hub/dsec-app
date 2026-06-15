@@ -183,7 +183,14 @@ export function buildThemeCss({
 
   const accent = normalizeHex(themeAccent);
   if (accent) {
-    decls.push(`--accent:${accent}`, `--accent-foreground:${accentForeground(accent)}`);
+    // A custom accent drives the fill, its readable foreground, AND the text
+    // variant (so accent links/badges track the user's colour rather than the
+    // brand pink). The brand default keeps the dedicated --accent-text from CSS.
+    decls.push(
+      `--accent:${accent}`,
+      `--accent-foreground:${accentForeground(accent)}`,
+      `--accent-text:${accent}`,
+    );
   }
 
   const background = normalizeHex(themeBackground);

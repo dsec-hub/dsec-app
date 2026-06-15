@@ -45,7 +45,7 @@ export default async function ProjectDetailPage({
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <Badge variant={projectStatusVariant(project.status)}>{project.status ?? "—"}</Badge>
         {project.isPublic && <Badge variant="accent">Public</Badge>}
-        {project.featured && <span className="text-sm text-accent">★ Featured</span>}
+        {project.featured && <span className="text-sm text-accent-text">★ Featured</span>}
         {project.category && <Badge variant="neutral">{project.category}</Badge>}
       </div>
 
@@ -94,7 +94,7 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }) {
 
 function ExtLink({ href }: { href: string }) {
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="break-all text-accent underline underline-offset-2">
+    <a href={href} target="_blank" rel="noreferrer" className="break-all text-accent-text underline underline-offset-2">
       {href}
     </a>
   );

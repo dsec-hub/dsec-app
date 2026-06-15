@@ -183,7 +183,7 @@ export function DateField({
                     isDisabled && "cursor-not-allowed text-muted/30",
                     !isDisabled && !isSel && "hover:bg-elevated",
                     isSel && "bg-accent font-medium text-accent-foreground",
-                    !isSel && isToday && "font-semibold text-accent",
+                    !isSel && isToday && "font-semibold text-accent-text",
                   )}
                 >
                   {day}
@@ -200,7 +200,7 @@ export function DateField({
                 commit(t);
                 setOpen(false);
               }}
-              className="font-medium text-accent hover:underline"
+              className="font-medium text-accent-text hover:underline"
             >
               Today
             </button>

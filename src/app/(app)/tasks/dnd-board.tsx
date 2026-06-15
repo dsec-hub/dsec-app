@@ -118,7 +118,7 @@ export function DndBoard({
                   )}
                   <Link
                     href={`/tasks/${t.id}/edit`}
-                    className="min-w-0 flex-1 text-sm hover:text-accent"
+                    className="min-w-0 flex-1 text-sm hover:text-accent-text"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {t.title}
@@ -178,7 +178,7 @@ function QuickAdd({ boardId, status }: { boardId: number | null; status: string 
         className="w-full rounded-md border border-border bg-elevated px-2 py-1.5 text-sm outline-none focus:border-accent"
       />
       <div className="flex items-center gap-1.5">
-        <button type="submit" className="rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-white">
+        <button type="submit" className="rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
           Add
         </button>
         <button

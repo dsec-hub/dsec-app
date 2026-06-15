@@ -45,7 +45,7 @@ export function SponsorTasks({
                     className={
                       done
                         ? "truncate text-sm text-muted line-through hover:text-foreground"
-                        : "truncate text-sm font-medium hover:text-accent"
+                        : "truncate text-sm font-medium hover:text-accent-text"
                     }
                   >
                     {t.title}

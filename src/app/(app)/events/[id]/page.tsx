@@ -120,7 +120,7 @@ export default async function EventDetailPage({
                 href={event.ticketUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-block break-all text-sm text-accent underline underline-offset-2"
+                className="inline-block break-all text-sm text-accent-text underline underline-offset-2"
               >
                 {event.ticketUrl}
               </a>
@@ -165,7 +165,7 @@ export default async function EventDetailPage({
             <dl className="grid gap-4 sm:grid-cols-2">
               <Pair label="Linked sponsor / partner">
                 {sponsor ? (
-                  <Link href={`/sponsors/${sponsor.id}`} className="text-accent hover:underline">
+                  <Link href={`/sponsors/${sponsor.id}`} className="text-accent-text hover:underline">
                     {sponsor.name}
                   </Link>
                 ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -110,12 +110,33 @@ export function AppShell({
     getCollapseServerSnapshot,
   );
   const [mobileOpen, setMobileOpen] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
 
   function toggleCollapsed() {
     setCollapsedStore(!collapsed);
   }
 
   const closeMobile = () => setMobileOpen(false);
+
+  // While the mobile nav drawer is open: lock body scroll, close on Escape, move
+  // focus into the drawer, and restore it to the trigger on close. (Tab-trapping
+  // is light here — links wrap naturally and the backdrop closes on tap.)
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    drawerRef.current?.querySelector<HTMLElement>("a,button")?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      previouslyFocused?.focus?.();
+    };
+  }, [mobileOpen]);
 
   return (
     <div className="flex min-h-dvh flex-col bg-background md:flex-row">
@@ -163,8 +184,8 @@ export function AppShell({
         </div>
       </aside>
 
-      {/* Mobile top bar */}
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-surface/40 px-4 py-2.5 md:hidden">
+      {/* Mobile top bar — sticky so the only nav trigger is always reachable. */}
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-surface/80 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-surface/60 md:hidden">
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Open menu"
@@ -182,9 +203,15 @@ export function AppShell({
           <button
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
-            className="absolute inset-0 bg-black/50"
+            className="animate-fade-in absolute inset-0 bg-black/50"
           />
-          <aside className="absolute inset-y-0 left-0 flex w-64 max-w-[80%] flex-col border-r border-border bg-background p-3 shadow-xl">
+          <aside
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
+            className="animate-slide-in-left absolute inset-y-0 left-0 flex w-64 max-w-[80%] flex-col border-r border-border bg-background p-3 shadow-xl"
+          >
             <div className="flex items-center justify-between px-2 py-2">
               <div>
                 <div className="font-title text-sm font-semibold tracking-tight">DSEC</div>

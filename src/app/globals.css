@@ -32,6 +32,9 @@
 
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  /* Accent used as *text* (links, badges). Separate from --accent so the fill
+     can stay the exact brand pink while text gets enough contrast for WCAG AA. */
+  --color-accent-text: var(--accent-text);
 
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -51,8 +54,10 @@
   --foreground: #0a0a0c; /* near-black ink                                 */
   --muted: #5c6063; /* muted body / subtitles                             */
 
-  --accent: #e91e63; /* DSEC Action Pink                                   */
+  --accent: #e91e63; /* DSEC Action Pink (fills: buttons, today-dot)        */
   --accent-foreground: #ffffff;
+  --accent-text: #c2185b; /* darker pink for small text — #e91e63 is only
+                             ~4.35:1 on white (below AA); this clears it       */
 
   --success: #1f8a65;
   --warning: #b45309;
@@ -73,6 +78,7 @@
 
   --accent: #ff5c8a; /* DSEC pink, lifted for contrast on dark            */
   --accent-foreground: #1a0a10;
+  --accent-text: #ff5c8a; /* already high-contrast on the near-black canvas  */
 
   --success: #11ff99;
   --warning: #ffc53d;
@@ -117,4 +123,47 @@ h3,
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
+}
+
+/* Enter animations for overlays (modal panel, nav drawer, backdrop). Kept short
+   (150–200ms) and state-conveying, not decorative. The prefers-reduced-motion
+   block below collapses their duration to ~0, so they're automatically skipped
+   for users who ask for reduced motion. */
+@keyframes dsec-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dsec-pop-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes dsec-slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: none; }
+}
+.animate-fade-in { animation: dsec-fade-in 0.15s ease-out both; }
+.animate-pop-in { animation: dsec-pop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-in-left { animation: dsec-slide-in-left 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Keyboard focus: a visible, on-brand ring for anything that doesn't set its own
+   (nav links, icon buttons, bare elements). Mouse clicks don't trigger it
+   (:focus-visible), so it never adds chrome for pointer users. WCAG 2.4.7. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Respect "reduce motion": neutralise non-essential animation/transition (theme
+   crossfade, skeleton pulse, the top-progress trickle, hover lifts) for users
+   who ask for it, while leaving instant state changes intact. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

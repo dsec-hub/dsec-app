@@ -114,7 +114,7 @@ export default async function SponsorDetailPage({
                   <div className="min-w-0">
                     <Link
                       href={`/events/${ev.id}`}
-                      className="truncate text-sm font-medium hover:text-accent"
+                      className="truncate text-sm font-medium hover:text-accent-text"
                     >
                       {ev.name}
                     </Link>

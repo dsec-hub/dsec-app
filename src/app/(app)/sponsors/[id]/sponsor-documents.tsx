@@ -59,7 +59,7 @@ export function SponsorDocuments({
                     href={d.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm font-medium hover:text-accent"
+                    className="flex items-center gap-2 text-sm font-medium hover:text-accent-text"
                   >
                     <Badge variant={d.kind === "pdf" ? "danger" : "accent"}>
                       {d.kind === "pdf" ? "PDF" : "Image"}

@@ -81,7 +81,7 @@ export default async function LeadsPage({
               href={href}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 active
-                  ? "bg-accent/10 text-accent"
+                  ? "bg-accent/10 text-accent-text"
                   : "bg-elevated text-muted hover:text-foreground"
               }`}
             >

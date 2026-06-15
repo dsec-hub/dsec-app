@@ -54,7 +54,7 @@ export function TasksView({
                   <div className="min-w-0">
                     <Link
                       href={`/tasks/${t.id}/edit`}
-                      className="text-sm transition-colors hover:text-accent"
+                      className="text-sm transition-colors hover:text-accent-text"
                     >
                       {t.title}
                     </Link>

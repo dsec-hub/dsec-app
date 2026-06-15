@@ -1,8 +1,10 @@
+import { isValidElement, cloneElement, useId } from "react";
+
 import { cn } from "@/lib/format";
 import { Icons } from "@/components/icons";
 
 export const controlBase =
-  "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none transition-colors focus:border-accent disabled:opacity-60";
+  "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none transition-colors focus:border-accent focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-60";
 
 export function Field({
   label,
@@ -17,12 +19,29 @@ export function Field({
   hint?: string;
   children: React.ReactNode;
 }) {
+  // Associate the label with its control so clicking the label focuses the input
+  // and screen readers announce a name. Most call sites don't pass htmlFor, so we
+  // generate an id and inject it into a single element child that has none. An
+  // explicit htmlFor (or a child that already sets its own id) always wins.
+  const autoId = useId();
+  let control = children;
+  let controlId = htmlFor;
+  if (!htmlFor && isValidElement(children)) {
+    const childProps = children.props as { id?: string };
+    controlId = childProps.id ?? autoId;
+    if (!childProps.id) {
+      control = cloneElement(children as React.ReactElement<{ id?: string }>, {
+        id: controlId,
+      });
+    }
+  }
+
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-sm text-muted">
+      <label htmlFor={controlId} className="text-sm text-muted">
         {label}
       </label>
-      {children}
+      {control}
       {hint && !error && <p className="text-xs text-muted/70">{hint}</p>}
       {error && <p className="text-xs text-danger">{error}</p>}
     </div>

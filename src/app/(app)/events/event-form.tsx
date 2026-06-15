@@ -181,7 +181,7 @@ export function EventForm({
             <button
               type="button"
               onClick={() => onStartChange(nextHostDate(SOFT_DAYS))}
-              className="mt-1.5 self-start text-xs font-medium text-accent hover:underline"
+              className="mt-1.5 self-start text-xs font-medium text-accent-text hover:underline"
             >
               ⏱ Suggest next best Thursday →
             </button>
@@ -508,7 +508,7 @@ function TicketTiers({
       <button
         type="button"
         onClick={() => setTiers((prev) => [...prev, { label: "", price: "" }])}
-        className="self-start text-xs font-medium text-accent hover:underline"
+        className="self-start text-xs font-medium text-accent-text hover:underline"
       >
         + Add tier
       </button>
