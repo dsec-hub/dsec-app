@@ -628,7 +628,7 @@ export async function getDocumentById(id: number) {
 export type MediaItem = Awaited<ReturnType<typeof getMedia>>[number];
 
 /** The entity kinds that can own uploaded media (mirrors dsec-api ENTITY_TYPES). */
-export type MediaEntityType = "event" | "project" | "sponsor" | "speaker";
+export type MediaEntityType = "event" | "project" | "sponsor" | "speaker" | "person";
 
 /** Images attached to an entity, ordered for the dashboard gallery. */
 export async function getMedia(entityType: MediaEntityType, entityId: number) {

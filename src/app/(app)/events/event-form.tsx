@@ -443,7 +443,7 @@ function TicketTiers({
   const [tiers, setTiers] = useState<{ label: string; price: string }[]>(() =>
     defaultValue && defaultValue.length
       ? defaultValue.map((t) => ({
-          label: t.label,
+          label: t.label ?? "",
           price: t.price == null ? "" : String(t.price),
         }))
       : DEFAULT_TIERS.map((t) => ({ ...t })),

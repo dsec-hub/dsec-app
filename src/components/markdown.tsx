@@ -1,3 +1,4 @@
+import { CopyableLink } from "@/components/copyable-link";
 import { cn } from "@/lib/format";
 
 /**
@@ -37,9 +38,9 @@ function renderInline(text: string, keyBase: string): React.ReactNode[] {
     const link = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (link) {
       return (
-        <a key={key} href={link[2]} target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2">
+        <CopyableLink key={key} href={link[2]}>
           {link[1]}
-        </a>
+        </CopyableLink>
       );
     }
     if (tok.startsWith("**") && tok.endsWith("**")) {
@@ -86,9 +87,17 @@ function parseBlocks(lines: string[], keyPrefix: string): React.ReactNode[] {
 
   const flushPara = () => {
     if (para.length) {
+      const k = key();
+      // Each source line stays on its own line — a single newline is a line
+      // break, not collapsed whitespace. Blank lines already split paragraphs.
       blocks.push(
-        <p key={key()} className="text-sm leading-relaxed text-foreground/90">
-          {renderInline(para.join(" "), key())}
+        <p key={k} className="text-sm leading-relaxed text-foreground/90">
+          {para.map((ln, li) => (
+            <span key={li}>
+              {li > 0 && <br />}
+              {renderInline(ln, `${k}-${li}`)}
+            </span>
+          ))}
         </p>,
       );
       para = [];

@@ -16,6 +16,7 @@ import {
   Lora,
 } from "next/font/google";
 import { Toaster } from "sonner";
+import { TopProgressBar } from "@/components/top-progress-bar";
 import "./globals.css";
 
 // Resend's DESIGN.md uses Inter for UI and Geist Mono on code surfaces. Per the
@@ -91,6 +92,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
       <body className="min-h-full">
+        <TopProgressBar />
         {children}
         <Toaster richColors closeButton position="top-right" theme="system" />
       </body>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
 
 import { CommitteeSelect } from "@/components/committee-select";
-import { Field, FormError, SelectField, TextArea, TextInput } from "@/components/form";
+import { CheckboxField, Field, FormError, SelectField, TextArea, TextInput } from "@/components/form";
 import { SubmitButton } from "@/components/submit-button";
 import { buttonSecondary } from "@/components/ui";
 import { PERSON_STATUSES, PERSON_TYPES } from "@/lib/options";
@@ -107,7 +107,41 @@ export function PersonForm({
           </Field>
         </div>
 
-        <Field label="Notes">
+        {/* Public website profile — only what the public site shows. */}
+        <div className="space-y-5 border-t border-border pt-6">
+          <Field
+            label="Bio"
+            hint="Public one-line intro shown under their name on the website team grid. Kept separate from internal Notes."
+          >
+            <TextArea
+              name="bio"
+              defaultValue={p?.bio ?? ""}
+              placeholder="e.g. Leads web projects and runs React/Next.js workshops."
+            />
+          </Field>
+          <div className="grid items-start gap-5 sm:grid-cols-2">
+            <div className="space-y-1">
+              <CheckboxField
+                label="Show on website"
+                name="show_on_website"
+                defaultChecked={p?.showOnWebsite ?? false}
+              />
+              <p className="pl-[26px] text-xs text-muted">
+                Publishes this person on the public team/committee grid. Upload a profile
+                photo below for the best look.
+              </p>
+            </div>
+            <Field label="Display order" hint="Lower numbers appear first on the website grid.">
+              <TextInput
+                type="number"
+                name="display_order"
+                defaultValue={p?.displayOrder ?? 0}
+              />
+            </Field>
+          </div>
+        </div>
+
+        <Field label="Notes" hint="Internal — never shown on the public site.">
           <TextArea name="notes" defaultValue={p?.notes ?? ""} />
         </Field>
       </fieldset>

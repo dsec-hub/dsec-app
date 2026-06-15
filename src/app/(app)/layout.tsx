@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { AppShell, type NavGroup, type NavItem } from "@/components/app-shell";
 import { getCurrentUser } from "@/lib/dal";
@@ -65,7 +66,9 @@ export default async function AppLayout({
   if (!user || !user.isActive) redirect("/signin");
 
   // Best-effort usage heartbeat — records that this member accessed the app.
-  await logAccess({ id: user.id, email: user.email });
+  // Scheduled with `after` so the Neon INSERT runs once the response has been
+  // sent rather than blocking the render (it used to sit in the critical path).
+  after(() => logAccess({ id: user.id, email: user.email }));
 
   const name = user.name ?? user.email;
   // Gate each item by module, then drop any group left with no visible items.

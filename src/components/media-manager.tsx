@@ -18,7 +18,7 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/format";
 
-export type EntityType = "event" | "project" | "sponsor" | "speaker";
+export type EntityType = "event" | "project" | "sponsor" | "speaker" | "person";
 
 export type MediaItem = {
   id: number;
@@ -50,6 +50,9 @@ const ROLES_BY_ENTITY: Record<EntityType, RoleDef[]> = {
   speaker: [
     { value: "photo", label: "Photo", aspect: 1, hint: "Headshot — square 1:1" },
   ],
+  person: [
+    { value: "photo", label: "Photo", aspect: 1, hint: "Headshot — square 1:1" },
+  ],
 };
 
 // Per-entity copy for the section header / empty state / buttons.
@@ -58,6 +61,7 @@ const SECTION_COPY: Record<EntityType, { title: string; add: string; empty: stri
   project: { title: "Images", add: "Add image", empty: "No images yet. Upload a banner, poster, or image — they show on the public site." },
   sponsor: { title: "Logo", add: "Add logo", empty: "No logo yet. Upload the sponsor's brand logo — it shows on the public site." },
   speaker: { title: "Photo", add: "Add photo", empty: "No photo yet. Upload a headshot — it shows on the public site." },
+  person: { title: "Profile photo", add: "Add photo", empty: "No profile photo yet. Upload a headshot — it shows on the public team page (and as the lead avatar on events/projects they run)." },
 };
 
 function roleVariant(role: string) {

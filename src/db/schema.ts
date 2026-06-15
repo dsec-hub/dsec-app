@@ -78,6 +78,14 @@ export const people = pgTable("people", {
 	linkedin: varchar({ length: 256 }),
 	website: varchar({ length: 256 }),
 	notes: text(),
+	// Public website fields (added by dsec-api migration c5a7e9f1b3d6).
+	// `bio` is a public one-line intro (distinct from internal `notes`);
+	// `showOnWebsite` opts the person into the public team grid; `displayOrder`
+	// orders that grid (lower first). The headshot lives in `media_asset`
+	// (entityType="person", role="photo"), not on this row.
+	bio: text(),
+	showOnWebsite: boolean("show_on_website").default(false).notNull(),
+	displayOrder: integer("display_order").default(0).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	archived: boolean().default(false).notNull(),

@@ -7,16 +7,18 @@ import { logMutation } from "@/lib/usage";
 
 export type MediaState = { error?: string; ok?: string } | undefined;
 
-type EntityType = "event" | "project" | "sponsor" | "speaker";
+type EntityType = "event" | "project" | "sponsor" | "speaker" | "person";
 
 // Maps an upload target to the dashboard module (for write-permission checks)
 // and the route base to revalidate. Sponsor logos live under /sponsors; speaker
-// photos are managed on the event edit page, so they use the events module.
+// photos are managed on the event edit page, so they use the events module;
+// person profile photos are managed on the people edit page.
 const SECTION = {
   event: { module: "events", base: "/events" },
   project: { module: "projects", base: "/projects" },
   sponsor: { module: "sponsors", base: "/sponsors" },
   speaker: { module: "events", base: "/events" },
+  person: { module: "people", base: "/people" },
 } as const;
 
 function apiEnv(): { base: string; key: string } | null {

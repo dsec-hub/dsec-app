@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { people } from "@/db/schema";
 import { requireWrite } from "@/lib/dal";
-import { str } from "@/lib/form-data";
+import { bool, int, str } from "@/lib/form-data";
 import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
 
@@ -27,6 +27,9 @@ function parsePerson(fd: FormData) {
     linkedin: str(fd, "linkedin"),
     website: str(fd, "website"),
     notes: str(fd, "notes"),
+    bio: str(fd, "bio"),
+    showOnWebsite: bool(fd, "show_on_website"),
+    displayOrder: int(fd, "display_order") ?? 0,
   };
 }
 

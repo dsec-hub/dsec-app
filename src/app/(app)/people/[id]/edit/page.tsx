@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { MediaManager } from "@/components/media-manager";
 import { UndoButton } from "@/components/undo-button";
 import { Badge, PageHeader, SectionCard, buttonGhost } from "@/components/ui";
 import { getCommitteeOptions } from "@/lib/committee-queries";
@@ -7,7 +8,7 @@ import { requireModule } from "@/lib/dal";
 import { cn } from "@/lib/format";
 import { getPersonById } from "@/lib/queries";
 import { canWrite } from "@/lib/rbac";
-import { getMemberByStudentId } from "@/lib/workspace-queries";
+import { getMedia, getMemberByStudentId } from "@/lib/workspace-queries";
 
 import { archivePerson, deletePerson, updatePerson } from "../../actions";
 import { PersonForm } from "../../person-form";
@@ -26,9 +27,10 @@ export default async function EditPersonPage({
   const person = await getPersonById(personId);
   if (!person) notFound();
 
-  const [member, committees] = await Promise.all([
+  const [member, committees, photos] = await Promise.all([
     getMemberByStudentId(person.studentId),
     getCommitteeOptions(),
+    getMedia("person", personId),
   ]);
 
   return (
@@ -76,6 +78,14 @@ export default async function EditPersonPage({
         </div>
       ) : null}
       <PersonForm action={updatePerson.bind(null, personId)} person={person} committees={committees} canWrite={writable} redirectOnSuccess="/people" />
+      <div className="mt-6">
+        <MediaManager
+          entityType="person"
+          entityId={personId}
+          existing={photos}
+          canWrite={writable}
+        />
+      </div>
     </>
   );
 }

@@ -8,7 +8,7 @@ import { requireModule } from "@/lib/dal";
 import { personStatusVariant } from "@/lib/options";
 import { getPersonById } from "@/lib/queries";
 import { canWrite } from "@/lib/rbac";
-import { getMemberByStudentId } from "@/lib/workspace-queries";
+import { getMedia, getMemberByStudentId } from "@/lib/workspace-queries";
 
 /** Prefix a bare domain with https:// so user-entered URLs always link out. */
 function ensureHttp(url: string): string {
@@ -34,11 +34,13 @@ export default async function PersonDetailPage({
   const person = await getPersonById(personId);
   if (!person) notFound();
 
-  const [member, committees] = await Promise.all([
+  const [member, committees, photos] = await Promise.all([
     getMemberByStudentId(person.studentId),
     getCommitteeOptions(),
+    getMedia("person", personId),
   ]);
   const committeeColor = committees.find((c) => c.name === person.committee)?.color;
+  const photoUrl = photos.find((m) => m.role === "photo")?.webpUrl;
 
   // Contact + social links, in display order. `href: null` renders as plain text
   // (Discord has no canonical profile URL); only present fields are shown.
@@ -80,15 +82,26 @@ export default async function PersonDetailPage({
         }
       />
 
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        {person.type && <Badge variant="neutral">{person.type}</Badge>}
-        <Badge variant={personStatusVariant(person.status)}>{person.status ?? "—"}</Badge>
-        {person.committee && (
-          <span className="flex items-center gap-1.5 text-sm text-muted">
-            <CommitteeDot color={committeeColor} />
-            {person.committee}
-          </span>
+      <div className="mb-6 flex items-center gap-4">
+        {photoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoUrl}
+            alt={person.name}
+            className="size-16 shrink-0 rounded-lg border border-border object-cover"
+          />
         )}
+        <div className="flex flex-wrap items-center gap-2">
+          {person.type && <Badge variant="neutral">{person.type}</Badge>}
+          <Badge variant={personStatusVariant(person.status)}>{person.status ?? "—"}</Badge>
+          {person.showOnWebsite && <Badge variant="success">On website</Badge>}
+          {person.committee && (
+            <span className="flex items-center gap-1.5 text-sm text-muted">
+              <CommitteeDot color={committeeColor} />
+              {person.committee}
+            </span>
+          )}
+        </div>
       </div>
 
       {member && (

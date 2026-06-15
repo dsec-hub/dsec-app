@@ -35,8 +35,8 @@ export default async function EditEventPage({
       getSponsorOptions(),
       getCommitteeOptions(),
       getMedia("event", eventId),
-      getEventSpeakers(eventId),
-      getEventSponsors(eventId),
+      getEventSpeakers(eventId).catch(() => []),
+      getEventSponsors(eventId).catch(() => []),
     ]);
   if (!event) notFound();
 

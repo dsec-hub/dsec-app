@@ -36,6 +36,10 @@ export const people = pgTable("people", {
   linkedin: varchar({ length: 256 }),
   website: varchar({ length: 256 }),
   notes: text(),
+  // Public website fields (dsec-api migration c5a7e9f1b3d6).
+  bio: text(),
+  showOnWebsite: boolean("show_on_website").default(false).notNull(),
+  displayOrder: integer("display_order").default(0).notNull(),
   archived: boolean().default(false).notNull(),
 });
 
