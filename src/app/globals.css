@@ -1,36 +1,89 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — dark, minimal, one accent. Tailwind v4 reads these from
- * @theme and generates utilities (bg-background, bg-surface, border-border,
- * text-foreground, text-muted, text-accent, text-danger, …).
+ * DSEC Exec Dashboard — theme tokens.
+ *
+ * Design language follows the Resend DESIGN.md (./DESIGN.md): a minimal
+ * developer-tool brand — near-pure-black canvas, off-white text, hairline
+ * borders made from translucent white, a strict 12px container vocabulary, and
+ * atmospheric (glow, not shadow) depth. No decorative chrome.
+ *
+ * Two deviations from stock Resend: titles run Geist Mono instead of Resend's
+ * Domaine serif, and the single action colour is DSEC's Action Pink (#e91e63,
+ * the "CTAs / highlights" colour from dsec-website) rather than Resend's white.
+ *
+ * Tailwind v4 reads the @theme block to generate utilities (bg-background,
+ * border-border, text-muted, bg-accent, …). The utilities reference plain CSS
+ * variables (via `@theme inline`) whose VALUES are redefined per theme below,
+ * so every existing utility re-colours automatically when `.dark` is toggled.
  */
-@theme {
-  /* Surfaces */
-  --color-background: #0a0b0d;
-  --color-surface: #131519;
-  --color-elevated: #191c21;
-  --color-border: #262a31;
 
-  /* Text */
-  --color-foreground: #e8eaed;
-  --color-muted: #969ba4;
+/* Class strategy: `dark:` variants + token swaps key off `.dark` on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
 
-  /* Accent — single, restrained */
-  --color-accent: #7c9cff;
-  --color-accent-foreground: #0a0b0d;
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-border: var(--border);
 
-  /* Semantic (status chips, alerts) */
-  --color-success: #4ade80;
-  --color-warning: #fbbf24;
-  --color-danger: #f87171;
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
 
-  --font-sans: var(--font-geist-sans);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 }
 
-html {
+/* ── Light — clean cool inversion of the Resend canvas ────────────────── */
+:root {
+  --background: #f7f8fa; /* cool off-white page floor                       */
+  --surface: #ffffff; /* card                                              */
+  --elevated: #eef0f3; /* raised fill / active nav / avatar chip           */
+  --border: rgba(0, 0, 0, 0.1); /* translucent-ink hairline                */
+
+  --foreground: #0a0a0c; /* near-black ink                                 */
+  --muted: #5c6063; /* muted body / subtitles                             */
+
+  --accent: #e91e63; /* DSEC Action Pink                                   */
+  --accent-foreground: #ffffff;
+
+  --success: #1f8a65;
+  --warning: #b45309;
+  --danger: #e5193f;
+
+  color-scheme: light;
+}
+
+/* ── Dark — Resend near-pure-black canvas, off-white text ─────────────── */
+.dark {
+  --background: #000000; /* near-pure black canvas                          */
+  --surface: #0a0a0c; /* card — barely lifted off black                    */
+  --elevated: #141416; /* hover / active fill                              */
+  --border: rgba(255, 255, 255, 0.1); /* translucent-white hairline        */
+
+  --foreground: #fcfdff; /* off-white                                      */
+  --muted: #9a9da0; /* muted body / subtitles                             */
+
+  --accent: #ff5c8a; /* DSEC pink, lifted for contrast on dark            */
+  --accent-foreground: #1a0a10;
+
+  --success: #11ff99;
+  --warning: #ffc53d;
+  --danger: #ff2047;
+
   color-scheme: dark;
+}
+
+html {
+  /* Reset color-scheme; the no-flash script sets it per resolved theme. */
+  color-scheme: light dark;
 }
 
 body {
@@ -39,13 +92,28 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Smooth the swap when toggling theme. */
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* Titles run monospace by default (Resend uses a serif display; the brief calls
+ * for mono). `--font-title` lets a user's Appearance choice override headings
+ * independently of body text; unset, it falls back to the brand mono face. */
+h1,
+h2,
+h3,
+.font-title {
+  font-family: var(--font-title, var(--font-mono)), ui-monospace, monospace;
+  letter-spacing: -0.01em;
 }
 
 ::selection {
   background: color-mix(in oklab, var(--color-accent) 28%, transparent);
 }
 
-/* Thin, unobtrusive scrollbars that suit the dark surface. */
+/* Thin, unobtrusive scrollbars that suit either surface. */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;

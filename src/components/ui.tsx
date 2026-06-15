@@ -1,12 +1,18 @@
+import Link from "next/link";
+
 import { cn } from "@/lib/format";
 import type { BadgeVariant } from "@/lib/options";
 
 export const buttonPrimary =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-60";
+  "inline-flex items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-60";
 export const buttonSecondary =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-elevated";
+  "inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-elevated";
 export const buttonGhost =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-1 text-sm text-muted transition-colors hover:text-foreground";
+  "inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted transition-colors hover:text-foreground";
+export const buttonDanger =
+  "inline-flex items-center justify-center gap-1.5 rounded-md border border-danger/30 bg-danger/10 px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/20 disabled:opacity-60";
+
+export type Crumb = { label: string; href?: string };
 
 export function Card({
   className,
@@ -49,22 +55,47 @@ export function Badge({
   );
 }
 
+export function Breadcrumbs({ items }: { items: Crumb[] }) {
+  if (items.length === 0) return null;
+  return (
+    <nav aria-label="Breadcrumb" className="mb-2 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+      {items.map((c, i) => (
+        <span key={`${c.label}-${i}`} className="flex items-center gap-1.5">
+          {i > 0 && <span className="text-muted/40">/</span>}
+          {c.href ? (
+            <Link href={c.href} className="transition-colors hover:text-foreground">
+              {c.label}
+            </Link>
+          ) : (
+            <span className="text-foreground/80">{c.label}</span>
+          )}
+        </span>
+      ))}
+    </nav>
+  );
+}
+
 export function PageHeader({
   title,
   description,
   action,
+  breadcrumbs,
 }: {
   title: string;
   description?: string;
   action?: React.ReactNode;
+  breadcrumbs?: Crumb[];
 }) {
   return (
-    <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted">{description}</p>}
+    <div className="mb-8">
+      {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+          {description && <p className="mt-1 text-sm text-muted">{description}</p>}
+        </div>
+        {action}
       </div>
-      {action}
     </div>
   );
 }
@@ -75,7 +106,7 @@ export function SectionCard({
   children,
   className,
 }: {
-  title: string;
+  title: React.ReactNode;
   action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
@@ -106,7 +137,7 @@ export function StatCard({
 }) {
   return (
     <Card className="p-5">
-      <div className="text-2xl font-semibold tabular-nums">{value}</div>
+      <div className="font-title text-2xl font-semibold tabular-nums">{value}</div>
       <div className="mt-1 text-sm text-muted">{label}</div>
       {hint && <div className="mt-0.5 text-xs text-muted/70">{hint}</div>}
     </Card>

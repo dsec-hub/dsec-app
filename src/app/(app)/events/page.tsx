@@ -1,69 +1,44 @@
 import Link from "next/link";
 
-import {
-  Badge,
-  EmptyState,
-  PageHeader,
-  SectionCard,
-  buttonPrimary,
-  buttonSecondary,
-} from "@/components/ui";
-import { requireSession } from "@/lib/dal";
-import { formatDate } from "@/lib/format";
-import { dusaVariant, eventStatusVariant } from "@/lib/options";
-import { getEvents } from "@/lib/queries";
+import { PageHeader, buttonSecondary } from "@/components/ui";
+import { getCommitteeOptions } from "@/lib/committee-queries";
+import { requireModule } from "@/lib/dal";
+import { todayISO } from "@/lib/format";
+import { getEvents, getPeopleOptions, getSponsorOptions } from "@/lib/queries";
+import { canWrite } from "@/lib/rbac";
+
+import { EventsView } from "./events-view";
+import { NewEventButton } from "./new-event-button";
 
 export default async function EventsPage() {
-  await requireSession();
-  const events = await getEvents();
+  const me = await requireModule("events");
+  const writable = canWrite(me.modules, me.writeModules, "events");
+  const [events, people, sponsors, committees] = await Promise.all([
+    getEvents(),
+    getPeopleOptions(),
+    getSponsorOptions(),
+    getCommitteeOptions(),
+  ]);
 
   return (
     <>
       <PageHeader
         title="Events"
-        description="Every event the club is running. Click one to edit."
+        description="Every event the club is running. Click one to view."
+        breadcrumbs={[{ label: "Overview", href: "/" }, { label: "Events" }]}
         action={
           <div className="flex gap-2">
             <Link href="/events/dusa" className={buttonSecondary}>
               DUSA pipeline
             </Link>
-            <Link href="/events/new" className={buttonPrimary}>
-              New event
-            </Link>
+            {writable && (
+              <NewEventButton people={people} sponsors={sponsors} committees={committees} />
+            )}
           </div>
         }
       />
 
-      <SectionCard title={`${events.length} event${events.length === 1 ? "" : "s"}`}>
-        {events.length === 0 ? (
-          <EmptyState>No events yet — create the first one.</EmptyState>
-        ) : (
-          <ul className="divide-y divide-border">
-            {events.map((e) => (
-              <li key={e.id}>
-                <Link
-                  href={`/events/${e.id}/edit`}
-                  className="flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-elevated/50"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{e.name}</div>
-                    <div className="mt-0.5 truncate text-xs text-muted">
-                      {formatDate(e.startDate)} · {e.leadName ?? "no lead"} ·{" "}
-                      {e.committee ?? "—"}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant={dusaVariant(e.dusaSubmissionStatus)}>
-                      {e.dusaSubmissionStatus ?? "—"}
-                    </Badge>
-                    <Badge variant={eventStatusVariant(e.status)}>{e.status ?? "—"}</Badge>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </SectionCard>
+      <EventsView events={events} today={todayISO()} />
     </>
   );
 }

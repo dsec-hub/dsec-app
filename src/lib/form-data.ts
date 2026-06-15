@@ -24,3 +24,46 @@ export function num(fd: FormData, key: string): string | null {
 export function bool(fd: FormData, key: string): boolean {
   return fd.get(key) != null; // a checked checkbox is present; unchecked is absent
 }
+
+/** Parse the ticket-tiers hidden input: a JSON array of {label, price}. Price
+ * becomes a number (0 = free) or null (unset); rows without a label are dropped.
+ * Returns null when empty so the optional JSON column stays null. */
+export function tierList(
+  fd: FormData,
+  key: string,
+): { label: string; price: number | null }[] | null {
+  const v = str(fd, key);
+  if (!v) return null;
+  try {
+    const parsed = JSON.parse(v);
+    if (!Array.isArray(parsed)) return null;
+    const list = parsed
+      .map((t) => {
+        const raw = t?.price;
+        const price =
+          raw === null || raw === undefined || raw === "" ? null : Number(raw);
+        return { label: String(t?.label ?? "").trim(), price };
+      })
+      .filter((t) => t.label && (t.price === null || !Number.isNaN(t.price)));
+    return list.length ? list : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Parse a hidden input holding a JSON string array (e.g. TagCheckboxGroup).
+ * Returns null when empty so optional JSON columns stay null. */
+export function jsonList(fd: FormData, key: string): string[] | null {
+  const v = str(fd, key);
+  if (!v) return null;
+  try {
+    const parsed = JSON.parse(v);
+    if (Array.isArray(parsed)) {
+      const list = parsed.map((x) => String(x).trim()).filter(Boolean);
+      return list.length ? list : null;
+    }
+  } catch {
+    // ignore malformed input
+  }
+  return null;
+}

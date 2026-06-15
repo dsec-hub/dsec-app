@@ -1,13 +1,16 @@
 import Link from "next/link";
 
-import { Badge, Card, PageHeader } from "@/components/ui";
-import { requireSession } from "@/lib/dal";
-import { formatDate } from "@/lib/format";
-import { DUSA_STATUSES, dusaVariant } from "@/lib/options";
+import { PageHeader } from "@/components/ui";
+import { requireModule } from "@/lib/dal";
+import { DUSA_STATUSES } from "@/lib/options";
 import { getDusaPipeline } from "@/lib/queries";
+import { canWrite } from "@/lib/rbac";
+
+import { DusaBoard } from "./dusa-board";
 
 export default async function DusaPipelinePage() {
-  await requireSession();
+  const me = await requireModule("events");
+  const writable = canWrite(me.modules, me.writeModules, "events");
   const all = await getDusaPipeline();
   const columns = DUSA_STATUSES.map((status) => ({
     status,
@@ -17,8 +20,13 @@ export default async function DusaPipelinePage() {
   return (
     <>
       <PageHeader
+        breadcrumbs={[
+          { label: "Overview", href: "/" },
+          { label: "Events", href: "/events" },
+          { label: "DUSA pipeline" },
+        ]}
         title="DUSA pipeline"
-        description="Events grouped by submission status, soonest deadline first."
+        description="Drag events between columns to update their submission status."
         action={
           <Link href="/events" className="text-sm text-muted hover:text-foreground">
             ← All events
@@ -26,34 +34,7 @@ export default async function DusaPipelinePage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {columns.map((col) => (
-          <div key={col.status} className="flex flex-col gap-3">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-sm font-medium">{col.status}</span>
-              <Badge variant={dusaVariant(col.status)}>{col.items.length}</Badge>
-            </div>
-            <div className="flex flex-col gap-2">
-              {col.items.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted">
-                  None
-                </p>
-              ) : (
-                col.items.map((e) => (
-                  <Link key={e.id} href={`/events/${e.id}/edit`}>
-                    <Card className="p-3 transition-colors hover:bg-elevated">
-                      <div className="truncate text-sm font-medium">{e.name}</div>
-                      <div className="mt-1 text-xs text-muted">
-                        {e.dusaDeadline ? `Due ${formatDate(e.dusaDeadline)}` : "No deadline"}
-                      </div>
-                    </Card>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      <DusaBoard columns={columns} canWrite={writable} />
     </>
   );
 }

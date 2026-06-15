@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect } from "react";
 
 import {
   CheckboxField,
@@ -12,8 +13,10 @@ import {
   TextInput,
 } from "@/components/form";
 import { SubmitButton } from "@/components/submit-button";
+import { TagCheckboxGroup } from "@/components/tag-checkbox-group";
 import { buttonSecondary } from "@/components/ui";
-import { SPONSOR_STAGES, SPONSOR_TIERS } from "@/lib/options";
+import { RELATIONSHIP_TYPES, SPONSOR_STAGES, SPONSOR_TIERS, SUPPORT_TYPES } from "@/lib/options";
+import { useUndoToast } from "@/lib/use-undo-toast";
 import type { FormState } from "./actions";
 import type { SponsorRow } from "@/lib/queries";
 
@@ -23,75 +26,119 @@ export function SponsorForm({
   action,
   people,
   sponsor,
+  onSuccess,
+  onCancel,
+  redirectOnSuccess,
+  canWrite = true,
 }: {
   action: Action;
   people: { id: number; name: string }[];
   sponsor?: SponsorRow;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+  redirectOnSuccess?: string;
+  canWrite?: boolean;
 }) {
+  const router = useRouter();
   const [state, formAction] = useActionState(action, undefined);
+  useUndoToast(state);
   const s = sponsor;
+
+  useEffect(() => {
+    if (!state?.ok) return;
+    if (onSuccess) onSuccess();
+    else if (redirectOnSuccess) router.push(redirectOnSuccess);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
     <form action={formAction} className="max-w-2xl space-y-6">
-      <FormError>{state?.error}</FormError>
+      <fieldset disabled={!canWrite} className="space-y-6">
+        <FormError>{state?.error}</FormError>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Organisation">
-          <TextInput name="organisation" required defaultValue={s?.organisation ?? ""} />
-        </Field>
-        <Field label="Stage">
-          <SelectField name="stage" defaultValue={s?.stage ?? "Prospect"}>
-            {SPONSOR_STAGES.map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </SelectField>
-        </Field>
-        <Field label="Tier">
-          <SelectField name="tier" defaultValue={s?.tier ?? ""}>
-            <option value="">—</option>
-            {SPONSOR_TIERS.map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </SelectField>
-        </Field>
-        <Field label="Value (AUD)">
-          <TextInput
-            type="number"
-            step="0.01"
-            name="value_aud"
-            defaultValue={s?.valueAud ?? ""}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Organisation">
+            <TextInput name="organisation" required defaultValue={s?.organisation ?? ""} />
+          </Field>
+          <Field label="Relationship" hint="Partners give in-kind support, not money.">
+            <SelectField name="relationship_type" defaultValue={s?.relationshipType ?? "Sponsor"}>
+              {RELATIONSHIP_TYPES.map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </SelectField>
+          </Field>
+          <Field label="Stage">
+            <SelectField name="stage" defaultValue={s?.stage ?? "Prospect"}>
+              {SPONSOR_STAGES.map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </SelectField>
+          </Field>
+          <Field label="Tier">
+            <SelectField name="tier" defaultValue={s?.tier ?? ""}>
+              <option value="">—</option>
+              {SPONSOR_TIERS.map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </SelectField>
+          </Field>
+          <Field label="Value (AUD)" hint="Leave blank for in-kind support (no cash).">
+            <TextInput
+              type="number"
+              step="0.01"
+              name="value_aud"
+              defaultValue={s?.valueAud ?? ""}
+            />
+          </Field>
+          <Field label="Contact">
+            <SelectField
+              name="contact_person_id"
+              defaultValue={s?.contactPersonId ? String(s.contactPersonId) : ""}
+            >
+              <option value="">—</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </SelectField>
+          </Field>
+        </div>
+
+        <Field label="Type of support" hint="What they provide — cash and/or in-kind.">
+          <TagCheckboxGroup
+            name="support_types"
+            options={SUPPORT_TYPES}
+            defaultValue={s?.supportTypes}
           />
         </Field>
-        <Field label="Contact">
-          <SelectField
-            name="contact_person_id"
-            defaultValue={s?.contactPersonId ? String(s.contactPersonId) : ""}
-          >
-            <option value="">—</option>
-            {people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </SelectField>
+
+        <CheckboxField
+          label="DUSA approved"
+          name="dusa_approved"
+          defaultChecked={s?.dusaApproved ?? false}
+        />
+
+        <Field label="Notes">
+          <TextArea name="notes" defaultValue={s?.notes ?? ""} />
         </Field>
-      </div>
-
-      <CheckboxField
-        label="DUSA approved"
-        name="dusa_approved"
-        defaultChecked={s?.dusaApproved ?? false}
-      />
-
-      <Field label="Notes">
-        <TextArea name="notes" defaultValue={s?.notes ?? ""} />
-      </Field>
+      </fieldset>
 
       <div className="flex items-center gap-3">
-        <SubmitButton>{sponsor ? "Save changes" : "Add sponsor"}</SubmitButton>
-        <Link href="/sponsors" className={buttonSecondary}>
-          Cancel
-        </Link>
+        {canWrite ? (
+          <SubmitButton>{sponsor ? "Save changes" : "Add sponsor"}</SubmitButton>
+        ) : (
+          <p className="text-sm text-muted">View only — you don’t have edit access for this section.</p>
+        )}
+        {onCancel ? (
+          <button type="button" onClick={onCancel} className={buttonSecondary}>
+            Cancel
+          </button>
+        ) : (
+          <Link href="/sponsors" className={buttonSecondary}>
+            Cancel
+          </Link>
+        )}
       </div>
     </form>
   );

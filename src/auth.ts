@@ -5,7 +5,8 @@ import bcrypt from "bcryptjs";
 
 import { authConfig } from "./auth.config";
 import { db } from "./db";
-import { appUser } from "./db/schema";
+import { appUser, appRole } from "./db/schema";
+import { logUsage } from "./lib/usage";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -21,8 +22,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!email || !password) return null;
 
         const [user] = await db
-          .select()
+          .select({
+            id: appUser.id,
+            email: appUser.email,
+            name: appUser.name,
+            passwordHash: appUser.passwordHash,
+            role: appUser.role,
+            isActive: appUser.isActive,
+            roleId: appUser.roleId,
+            roleName: appRole.name,
+            modules: appRole.modules,
+          })
           .from(appUser)
+          .leftJoin(appRole, eq(appUser.roleId, appRole.id))
           .where(eq(appUser.email, email))
           .limit(1);
 
@@ -35,9 +47,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: String(user.id),
           email: user.email,
           name: user.name ?? user.email,
-          role: user.role,
+          role: user.roleName ?? user.role,
+          roleId: user.roleId ?? undefined,
+          // Snapshot of module access, carried in the JWT for the proxy's coarse
+          // route gate. Authoritative checks re-read the DB (see lib/dal.ts).
+          modules: Array.isArray(user.modules) ? user.modules : [],
         };
       },
     }),
   ],
+  events: {
+    // Record every successful sign-in for the admin usage stats.
+    async signIn({ user }) {
+      const id = Number(user?.id);
+      await logUsage({
+        actorId: Number.isNaN(id) ? null : id,
+        actorLabel: user?.email ?? null,
+        action: "login",
+      });
+    },
+  },
 });

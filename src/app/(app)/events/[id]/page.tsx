@@ -1,0 +1,229 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { CommitteeDot } from "@/components/committee-select";
+import { MediaManager } from "@/components/media-manager";
+import { Badge, Card, PageHeader, SectionCard, buttonSecondary } from "@/components/ui";
+import { getCommitteeOptions } from "@/lib/committee-queries";
+import { requireModule } from "@/lib/dal";
+import { formatAUD, formatDate, formatTime } from "@/lib/format";
+import { dusaVariant, eventStatusVariant } from "@/lib/options";
+import { getEventById, getPeopleOptions, getSponsorOptions } from "@/lib/queries";
+import { canWrite } from "@/lib/rbac";
+import { fetchReviewSummary } from "@/lib/reviews";
+import { getMedia } from "@/lib/workspace-queries";
+
+import { ReviewPanel } from "../review-panel";
+
+export default async function EventDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const me = await requireModule("events");
+  const writable = canWrite(me.modules, me.writeModules, "events");
+  const { id } = await params;
+  const eventId = Number(id);
+  if (Number.isNaN(eventId)) notFound();
+
+  const [event, people, sponsors, committees, media] = await Promise.all([
+    getEventById(eventId),
+    getPeopleOptions(),
+    getSponsorOptions(),
+    getCommitteeOptions(),
+    getMedia("event", eventId),
+  ]);
+  if (!event) notFound();
+
+  const reviewSummary = event.reviewFormId ? await fetchReviewSummary(eventId) : null;
+
+  const leadName = people.find((p) => p.id === event.eventLeadId)?.name ?? null;
+  const sponsor = sponsors.find((s) => s.id === event.relatedSponsorId) ?? null;
+  const committeeColor = committees.find((c) => c.name === event.committee)?.color;
+
+  const dateLabel = event.startDate
+    ? formatDate(event.startDate) +
+      (event.endDate && event.endDate !== event.startDate
+        ? ` – ${formatDate(event.endDate)}`
+        : "")
+    : "—";
+  const timeLabel = event.startTime
+    ? formatTime(event.startTime) + (event.endTime ? ` – ${formatTime(event.endTime)}` : "")
+    : "—";
+  const attendance =
+    event.actualAttendance != null
+      ? `${event.actualAttendance} attended`
+      : event.expectedAttendance != null
+        ? `${event.expectedAttendance} expected`
+        : "—";
+
+  const tiers = event.ticketTiers ?? [];
+  const supportTypes = event.supportTypes ?? [];
+  const showDusa = event.dusaRequired || !!event.dusaSubmissionStatus || !!event.dusaDeadline;
+  const showPartnership = !!sponsor || !!event.partnerOrg || supportTypes.length > 0;
+  const showTickets = !!event.ticketUrl || tiers.length > 0;
+
+  return (
+    <>
+      <PageHeader
+        title={event.name}
+        description={[event.type, event.format].filter(Boolean).join(" · ") || undefined}
+        breadcrumbs={[
+          { label: "Overview", href: "/" },
+          { label: "Events", href: "/events" },
+          { label: event.name },
+        ]}
+        action={
+          writable ? (
+            <Link href={`/events/${eventId}/edit`} className={buttonSecondary}>
+              Edit
+            </Link>
+          ) : undefined
+        }
+      />
+
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <Badge variant={eventStatusVariant(event.status)}>{event.status ?? "—"}</Badge>
+        {event.foodProvided && <Badge variant="success">Food provided</Badge>}
+        {event.externalGuests && <Badge variant="neutral">External guests</Badge>}
+      </div>
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Meta label="Date" value={dateLabel} />
+        <Meta label="Time" value={timeLabel} />
+        <Meta label="Lead" value={leadName ?? "—"} />
+        <Meta
+          label="Committee"
+          value={
+            event.committee ? (
+              <span className="flex items-center gap-1.5">
+                <CommitteeDot color={committeeColor} />
+                {event.committee}
+              </span>
+            ) : (
+              "—"
+            )
+          }
+        />
+        <Meta label="Venue" value={event.venue ?? "—"} />
+        <Meta label="Format" value={event.format ?? "—"} />
+        <Meta label="Trimester" value={event.trimester ?? "—"} />
+        <Meta label="Attendance" value={attendance} />
+      </div>
+
+      {showTickets && (
+        <SectionCard title="Tickets" className="mb-6">
+          <div className="space-y-4 p-5">
+            {event.ticketUrl && (
+              <a
+                href={event.ticketUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block break-all text-sm text-accent underline underline-offset-2"
+              >
+                {event.ticketUrl}
+              </a>
+            )}
+            {tiers.length > 0 && (
+              <ul className="divide-y divide-border rounded-lg border border-border">
+                {tiers.map((t, i) => (
+                  <li
+                    key={`${t.label}-${i}`}
+                    className="flex items-center justify-between gap-4 px-4 py-2.5 text-sm"
+                  >
+                    <span>{t.label}</span>
+                    <span className="tabular-nums text-muted">
+                      {t.price == null ? "—" : t.price === 0 ? "Free" : formatAUD(t.price)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {showDusa && (
+        <SectionCard title="DUSA" className="mb-6">
+          <dl className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+            <Pair label="Submission">
+              <Badge variant={dusaVariant(event.dusaSubmissionStatus)}>
+                {event.dusaSubmissionStatus ?? "—"}
+              </Badge>
+            </Pair>
+            <Pair label="Deadline">{formatDate(event.dusaDeadline)}</Pair>
+            <Pair label="Required">{event.dusaRequired ? "Yes" : "No"}</Pair>
+            <Pair label="External guests">{event.externalGuests ? "Yes" : "No"}</Pair>
+          </dl>
+        </SectionCard>
+      )}
+
+      {showPartnership && (
+        <SectionCard title="Partnership & support" className="mb-6">
+          <div className="space-y-4 p-5">
+            <dl className="grid gap-4 sm:grid-cols-2">
+              <Pair label="Linked sponsor / partner">
+                {sponsor ? (
+                  <Link href={`/sponsors/${sponsor.id}`} className="text-accent hover:underline">
+                    {sponsor.name}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </Pair>
+              <Pair label="Partner / collaborator">{event.partnerOrg ?? "—"}</Pair>
+            </dl>
+            {supportTypes.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {supportTypes.map((s) => (
+                  <Badge key={s} variant="accent">
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {event.notes && (
+        <SectionCard title="Notes" className="mb-6">
+          <p className="whitespace-pre-wrap p-5 text-sm text-foreground/90">{event.notes}</p>
+        </SectionCard>
+      )}
+
+      {media.length > 0 && (
+        <div className="mb-6">
+          <MediaManager entityType="event" entityId={eventId} existing={media} canWrite={false} />
+        </div>
+      )}
+
+      {event.reviewFormUrl && (
+        <ReviewPanel
+          eventId={eventId}
+          formUrl={event.reviewFormUrl}
+          summary={reviewSummary}
+          canWrite={false}
+        />
+      )}
+    </>
+  );
+}
+
+function Meta({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <Card className="p-5">
+      <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
+      <div className="mt-1.5 text-sm">{value}</div>
+    </Card>
+  );
+}
+
+function Pair({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
+      <dd className="mt-1.5 text-sm">{children}</dd>
+    </div>
+  );
+}

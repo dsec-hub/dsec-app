@@ -21,10 +21,19 @@ async function main() {
   const bcrypt = (await import("bcryptjs")).default;
   const { eq } = await import("drizzle-orm");
   const { db } = await import("../src/db");
-  const { appUser } = await import("../src/db/schema");
+  const { appUser, appRole } = await import("../src/db/schema");
+  const { sql } = await import("drizzle-orm");
 
   const normalizedEmail = email.toLowerCase().trim();
   const passwordHash = await bcrypt.hash(password, 10);
+
+  // Bootstrap users are admins. Falls back gracefully if setup-roles.ts hasn't
+  // been run yet (role_id stays null; role string still set).
+  const [adminRole] = await db
+    .select({ id: appRole.id })
+    .from(appRole)
+    .where(sql`lower(${appRole.name}) = 'admin'`)
+    .limit(1);
 
   const [existing] = await db
     .select()
@@ -35,7 +44,13 @@ async function main() {
   if (existing) {
     await db
       .update(appUser)
-      .set({ passwordHash, name: name ?? existing.name, isActive: true })
+      .set({
+        passwordHash,
+        name: name ?? existing.name,
+        isActive: true,
+        role: "Admin",
+        ...(adminRole ? { roleId: adminRole.id } : {}),
+      })
       .where(eq(appUser.id, existing.id));
     console.log(`Updated user: ${normalizedEmail}`);
   } else {
@@ -43,7 +58,8 @@ async function main() {
       email: normalizedEmail,
       name: name ?? null,
       passwordHash,
-      role: "exec",
+      role: "Admin",
+      roleId: adminRole?.id ?? null,
       isActive: true,
     });
     console.log(`Created user: ${normalizedEmail}`);

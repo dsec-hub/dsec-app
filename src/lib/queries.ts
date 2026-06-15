@@ -12,8 +12,10 @@ import {
   or,
 } from "drizzle-orm";
 
+import { count } from "drizzle-orm";
+
 import { db } from "@/db";
-import { events, finance, people, sponsors } from "@/db/schema";
+import { appSetting, events, finance, people, sponsorLeads, sponsorPackages, sponsors } from "@/db/schema";
 import { todayISO } from "@/lib/format";
 
 function addDaysISO(iso: string, days: number): string {
@@ -184,6 +186,15 @@ export async function getSponsorById(id: number): Promise<SponsorRow | null> {
   return row ?? null;
 }
 
+/** Active sponsors/partners for relation <select>s (e.g. an event's supporter). */
+export async function getSponsorOptions(): Promise<{ id: number; name: string }[]> {
+  return db
+    .select({ id: sponsors.id, name: sponsors.organisation })
+    .from(sponsors)
+    .where(eq(sponsors.archived, false))
+    .orderBy(asc(sponsors.organisation));
+}
+
 // --- Finance section ---
 
 export async function getAllFinance(): Promise<FinanceWithEvent[]> {
@@ -199,4 +210,63 @@ export async function getAllFinance(): Promise<FinanceWithEvent[]> {
 export async function getFinanceById(id: number): Promise<FinanceRow | null> {
   const [row] = await db.select().from(finance).where(eq(finance.id, id)).limit(1);
   return row ?? null;
+}
+
+// --- Sponsor packages ---
+
+export type SponsorPackageRow = typeof sponsorPackages.$inferSelect;
+
+export async function getSponsorPackages(): Promise<SponsorPackageRow[]> {
+  return db
+    .select()
+    .from(sponsorPackages)
+    .orderBy(asc(sponsorPackages.displayOrder), asc(sponsorPackages.id));
+}
+
+export async function getSponsorPackageById(id: number): Promise<SponsorPackageRow | null> {
+  const [row] = await db.select().from(sponsorPackages).where(eq(sponsorPackages.id, id)).limit(1);
+  return row ?? null;
+}
+
+// --- Sponsor leads ---
+
+export type SponsorLeadRow = typeof sponsorLeads.$inferSelect;
+
+export async function getSponsorLeads(status?: string): Promise<SponsorLeadRow[]> {
+  const q = db.select().from(sponsorLeads);
+  const rows = status
+    ? await q.where(eq(sponsorLeads.status, status)).orderBy(desc(sponsorLeads.createdAt))
+    : await q.orderBy(desc(sponsorLeads.createdAt));
+  return rows;
+}
+
+export async function getSponsorLeadById(id: number): Promise<SponsorLeadRow | null> {
+  const [row] = await db.select().from(sponsorLeads).where(eq(sponsorLeads.id, id)).limit(1);
+  return row ?? null;
+}
+
+export async function getNewLeadCount(): Promise<number> {
+  const [row] = await db
+    .select({ c: count() })
+    .from(sponsorLeads)
+    .where(eq(sponsorLeads.status, "new"));
+  return row?.c ?? 0;
+}
+
+// --- Site settings (key/value) ---
+
+/**
+ * All site settings as a flat `{ key: value }` map. Degrades to `{}` if the
+ * `app_setting` table hasn't been created yet (run scripts/setup-settings.ts)
+ * so the Settings page never hard-crashes on a fresh install.
+ */
+export async function getSiteSettings(): Promise<Record<string, string>> {
+  try {
+    const rows = await db.select().from(appSetting);
+    const out: Record<string, string> = {};
+    for (const r of rows) if (r.value != null) out[r.key] = r.value;
+    return out;
+  } catch {
+    return {};
+  }
 }

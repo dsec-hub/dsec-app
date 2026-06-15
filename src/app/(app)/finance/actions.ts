@@ -1,15 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { finance } from "@/db/schema";
-import { requireSession } from "@/lib/dal";
+import { requireWrite } from "@/lib/dal";
 import { bool, int, num, str } from "@/lib/form-data";
+import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
+import type { ActionResult } from "@/lib/undo-types";
 
-export type FormState = { error?: string } | undefined;
+export type FormState = ActionResult;
 
 function parseFinance(fd: FormData) {
   return {
@@ -31,12 +32,12 @@ function revalidateFinance() {
 }
 
 export async function createFinance(_prev: FormState, fd: FormData): Promise<FormState> {
-  await requireSession();
+  await requireWrite("finance");
   const values = parseFinance(fd);
   if (!values.item) return { error: "Item is required." };
-  await db.insert(finance).values(values);
+  const [row] = await db.insert(finance).values(values).returning({ id: finance.id });
   revalidateFinance();
-  redirect("/finance");
+  return { ok: true, message: "Finance entry created", undo: createToken("finance", row?.id) };
 }
 
 export async function updateFinance(
@@ -44,23 +45,36 @@ export async function updateFinance(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireSession();
+  await requireWrite("finance");
   const values = parseFinance(fd);
   if (!values.item) return { error: "Item is required." };
+  const undo = await snapshotForUpdate("finance", id);
   await db
     .update(finance)
     .set({ ...values, updatedAt: new Date().toISOString() })
     .where(eq(finance.id, id));
   revalidateFinance();
-  redirect("/finance");
+  return { ok: true, message: "Finance entry updated", undo };
 }
 
-export async function archiveFinance(id: number): Promise<void> {
-  await requireSession();
+export async function archiveFinance(id: number): Promise<FormState> {
+  await requireWrite("finance");
   await db
     .update(finance)
     .set({ archived: true, updatedAt: new Date().toISOString() })
     .where(eq(finance.id, id));
   revalidateFinance();
-  redirect("/finance");
+  return {
+    ok: true,
+    message: "Finance entry archived",
+    undo: { op: "update", key: "finance", id, prev: { archived: false } },
+  };
+}
+
+export async function deleteFinance(id: number): Promise<FormState> {
+  await requireWrite("finance");
+  const undo = await snapshotForDelete("finance", id);
+  await db.delete(finance).where(eq(finance.id, id));
+  revalidateFinance();
+  return { ok: true, message: "Finance entry deleted", undo };
 }

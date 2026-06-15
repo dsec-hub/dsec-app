@@ -1,15 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { people } from "@/db/schema";
-import { requireSession } from "@/lib/dal";
+import { requireWrite } from "@/lib/dal";
 import { str } from "@/lib/form-data";
+import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
+import type { ActionResult } from "@/lib/undo-types";
 
-export type FormState = { error?: string } | undefined;
+export type FormState = ActionResult;
 
 function parsePerson(fd: FormData) {
   return {
@@ -19,6 +20,12 @@ function parsePerson(fd: FormData) {
     roleTitle: str(fd, "role_title"),
     email: str(fd, "email"),
     status: str(fd, "status"),
+    studentId: str(fd, "student_id"),
+    discord: str(fd, "discord"),
+    instagram: str(fd, "instagram"),
+    github: str(fd, "github"),
+    linkedin: str(fd, "linkedin"),
+    website: str(fd, "website"),
     notes: str(fd, "notes"),
   };
 }
@@ -29,12 +36,12 @@ function revalidatePeople() {
 }
 
 export async function createPerson(_prev: FormState, fd: FormData): Promise<FormState> {
-  await requireSession();
+  await requireWrite("people");
   const values = parsePerson(fd);
   if (!values.name) return { error: "Name is required." };
-  await db.insert(people).values(values);
+  const [row] = await db.insert(people).values(values).returning({ id: people.id });
   revalidatePeople();
-  redirect("/people");
+  return { ok: true, message: "Person created", undo: createToken("person", row?.id) };
 }
 
 export async function updatePerson(
@@ -42,23 +49,36 @@ export async function updatePerson(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireSession();
+  await requireWrite("people");
   const values = parsePerson(fd);
   if (!values.name) return { error: "Name is required." };
+  const undo = await snapshotForUpdate("person", id);
   await db
     .update(people)
     .set({ ...values, updatedAt: new Date().toISOString() })
     .where(eq(people.id, id));
   revalidatePeople();
-  redirect("/people");
+  return { ok: true, message: "Person updated", undo };
 }
 
-export async function archivePerson(id: number): Promise<void> {
-  await requireSession();
+export async function archivePerson(id: number): Promise<FormState> {
+  await requireWrite("people");
   await db
     .update(people)
     .set({ archived: true, updatedAt: new Date().toISOString() })
     .where(eq(people.id, id));
   revalidatePeople();
-  redirect("/people");
+  return {
+    ok: true,
+    message: "Person archived",
+    undo: { op: "update", key: "person", id, prev: { archived: false } },
+  };
+}
+
+export async function deletePerson(id: number): Promise<FormState> {
+  await requireWrite("people");
+  const undo = await snapshotForDelete("person", id);
+  await db.delete(people).where(eq(people.id, id));
+  revalidatePeople();
+  return { ok: true, message: "Person deleted", undo };
 }

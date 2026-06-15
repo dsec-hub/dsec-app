@@ -1,52 +1,100 @@
 import { notFound } from "next/navigation";
 
+import { UndoButton } from "@/components/undo-button";
+import { MediaManager } from "@/components/media-manager";
 import { PageHeader, buttonGhost } from "@/components/ui";
-import { requireSession } from "@/lib/dal";
+import { getCommitteeOptions } from "@/lib/committee-queries";
+import { requireModule } from "@/lib/dal";
 import { cn } from "@/lib/format";
-import { getEventById, getPeopleOptions } from "@/lib/queries";
+import { getEventById, getPeopleOptions, getSponsorOptions } from "@/lib/queries";
+import { canWrite } from "@/lib/rbac";
+import { fetchReviewSummary } from "@/lib/reviews";
+import { getMedia } from "@/lib/workspace-queries";
 
-import { archiveEvent, updateEvent } from "../../actions";
+import { archiveEvent, deleteEvent, updateEvent } from "../../actions";
 import { EventForm } from "../../event-form";
+import { ReviewPanel } from "../../review-panel";
 
 export default async function EditEventPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireSession();
+  const me = await requireModule("events");
+  const writable = canWrite(me.modules, me.writeModules, "events");
   const { id } = await params;
   const eventId = Number(id);
   if (Number.isNaN(eventId)) notFound();
 
-  const [event, people] = await Promise.all([
+  const [event, people, sponsors, committees, media] = await Promise.all([
     getEventById(eventId),
     getPeopleOptions(),
+    getSponsorOptions(),
+    getCommitteeOptions(),
+    getMedia("event", eventId),
   ]);
   if (!event) notFound();
+
+  // Best-effort live stats; only hit the API when a form actually exists.
+  const reviewSummary = event.reviewFormId ? await fetchReviewSummary(eventId) : null;
 
   return (
     <>
       <PageHeader
         title="Edit event"
         description={event.name}
+        breadcrumbs={[
+          { label: "Overview", href: "/" },
+          { label: "Events", href: "/events" },
+          { label: event.name },
+        ]}
         action={
-          <form
-            action={async () => {
-              "use server";
-              await archiveEvent(eventId);
-            }}
-          >
-            <button className={cn(buttonGhost, "text-danger hover:text-danger")}>
-              Archive
-            </button>
-          </form>
+          writable && (
+            <div className="flex items-center gap-2">
+              <UndoButton
+                action={archiveEvent.bind(null, eventId)}
+                redirectTo="/events"
+                className={buttonGhost}
+              >
+                Archive
+              </UndoButton>
+              <UndoButton
+                action={deleteEvent.bind(null, eventId)}
+                confirm="Delete this event permanently?"
+                redirectTo="/events"
+                className={cn(buttonGhost, "text-danger hover:text-danger")}
+              >
+                Delete
+              </UndoButton>
+            </div>
+          )
         }
       />
       <EventForm
         action={updateEvent.bind(null, eventId)}
         people={people}
+        sponsors={sponsors}
+        committees={committees}
         event={event}
+        redirectOnSuccess="/events"
+        canWrite={writable}
       />
+      <div className="mt-6">
+        <MediaManager
+          entityType="event"
+          entityId={eventId}
+          existing={media}
+          canWrite={writable}
+        />
+      </div>
+      <div className="mt-6">
+        <ReviewPanel
+          eventId={eventId}
+          formUrl={event.reviewFormUrl}
+          summary={reviewSummary}
+          canWrite={writable}
+        />
+      </div>
     </>
   );
 }

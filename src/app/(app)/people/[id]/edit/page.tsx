@@ -1,11 +1,15 @@
 import { notFound } from "next/navigation";
 
-import { PageHeader, buttonGhost } from "@/components/ui";
-import { requireSession } from "@/lib/dal";
+import { UndoButton } from "@/components/undo-button";
+import { Badge, PageHeader, SectionCard, buttonGhost } from "@/components/ui";
+import { getCommitteeOptions } from "@/lib/committee-queries";
+import { requireModule } from "@/lib/dal";
 import { cn } from "@/lib/format";
 import { getPersonById } from "@/lib/queries";
+import { canWrite } from "@/lib/rbac";
+import { getMemberByStudentId } from "@/lib/workspace-queries";
 
-import { archivePerson, updatePerson } from "../../actions";
+import { archivePerson, deletePerson, updatePerson } from "../../actions";
 import { PersonForm } from "../../person-form";
 
 export default async function EditPersonPage({
@@ -13,7 +17,8 @@ export default async function EditPersonPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireSession();
+  const me = await requireModule("people");
+  const writable = canWrite(me.modules, me.writeModules, "people");
   const { id } = await params;
   const personId = Number(id);
   if (Number.isNaN(personId)) notFound();
@@ -21,25 +26,56 @@ export default async function EditPersonPage({
   const person = await getPersonById(personId);
   if (!person) notFound();
 
+  const [member, committees] = await Promise.all([
+    getMemberByStudentId(person.studentId),
+    getCommitteeOptions(),
+  ]);
+
   return (
     <>
       <PageHeader
         title="Edit person"
         description={person.name}
+        breadcrumbs={[
+          { label: "Overview", href: "/" },
+          { label: "People", href: "/people" },
+          { label: person.name },
+        ]}
         action={
-          <form
-            action={async () => {
-              "use server";
-              await archivePerson(personId);
-            }}
-          >
-            <button className={cn(buttonGhost, "text-danger hover:text-danger")}>
-              Archive
-            </button>
-          </form>
+          <div className="flex items-center gap-2">
+            {writable && (
+              <UndoButton action={archivePerson.bind(null, personId)} redirectTo="/people" className={buttonGhost}>
+                Archive
+              </UndoButton>
+            )}
+            {writable && (
+              <UndoButton action={deletePerson.bind(null, personId)} confirm="Delete this person permanently?" redirectTo="/people" className={cn(buttonGhost, "text-danger hover:text-danger")}>
+                Delete
+              </UndoButton>
+            )}
+          </div>
         }
       />
-      <PersonForm action={updatePerson.bind(null, personId)} person={person} />
+      {member ? (
+        <div className="mb-6">
+          <SectionCard title="DUSA club membership">
+            <div className="flex flex-wrap items-center gap-2 px-5 py-4 text-sm">
+              <Badge variant={member.isCurrent ? "success" : "neutral"}>
+                {member.isCurrent ? "Current member" : "Lapsed"}
+              </Badge>
+              <Badge variant={member.dusaMember ? "success" : "neutral"}>
+                {member.dusaMember ? "DUSA member" : "Non-DUSA"}
+              </Badge>
+              <span className="text-muted">
+                {[member.faculty, member.campus, member.membershipType]
+                  .filter(Boolean)
+                  .join(" · ") || "—"}
+              </span>
+            </div>
+          </SectionCard>
+        </div>
+      ) : null}
+      <PersonForm action={updatePerson.bind(null, personId)} person={person} committees={committees} canWrite={writable} redirectOnSuccess="/people" />
     </>
   );
 }

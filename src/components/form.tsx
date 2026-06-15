@@ -1,7 +1,8 @@
 import { cn } from "@/lib/format";
+import { Icons } from "@/components/icons";
 
-const controlBase =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent disabled:opacity-60";
+export const controlBase =
+  "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none transition-colors focus:border-accent disabled:opacity-60";
 
 export function Field({
   label,
@@ -40,12 +41,23 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
 
 export function SelectField({
   children,
+  className,
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  // Safari/iOS draw native <select> chrome (system chevron, inset shadow,
+  // forced radius) that ignores most of `controlBase`. `appearance-none` flattens
+  // it so the control matches our inputs in every browser; we then supply our own
+  // chevron. `pr-9` reserves room for it.
   return (
-    <select {...props} className={cn(controlBase, props.className)}>
-      {children}
-    </select>
+    <div className="relative">
+      <select
+        {...props}
+        className={cn(controlBase, "cursor-pointer appearance-none pr-9", className)}
+      >
+        {children}
+      </select>
+      <Icons.chevron className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+    </div>
   );
 }
 

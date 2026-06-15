@@ -6,12 +6,14 @@ import {
   PageHeader,
   SectionCard,
   StatCard,
-  buttonPrimary,
 } from "@/components/ui";
-import { requireSession } from "@/lib/dal";
+import { requireModule } from "@/lib/dal";
 import { formatAUD, formatDate } from "@/lib/format";
 import { financeStatusVariant } from "@/lib/options";
-import { getAllFinance, type FinanceWithEvent } from "@/lib/queries";
+import { getAllFinance, getEventOptions, type FinanceWithEvent } from "@/lib/queries";
+import { canWrite } from "@/lib/rbac";
+
+import { NewFinanceButton } from "./new-finance-button";
 
 const SETTLED = new Set(["Paid", "Rejected"]);
 
@@ -40,8 +42,9 @@ function Row({ f }: { f: FinanceWithEvent }) {
 }
 
 export default async function FinancePage() {
-  await requireSession();
-  const all = await getAllFinance();
+  const me = await requireModule("finance");
+  const writable = canWrite(me.modules, me.writeModules, "finance");
+  const [all, events] = await Promise.all([getAllFinance(), getEventOptions()]);
   const outstanding = all.filter((f) => !SETTLED.has(f.status ?? ""));
   const settled = all.filter((f) => SETTLED.has(f.status ?? ""));
   const outstandingTotal = outstanding.reduce((acc, f) => acc + Number(f.amountAud ?? 0), 0);
@@ -51,11 +54,8 @@ export default async function FinancePage() {
       <PageHeader
         title="Finance"
         description="Grants, income, reimbursements, and expenses."
-        action={
-          <Link href="/finance/new" className={buttonPrimary}>
-            New item
-          </Link>
-        }
+        breadcrumbs={[{ label: "Overview", href: "/" }, { label: "Finance" }]}
+        action={writable && <NewFinanceButton events={events} />}
       />
 
       <section className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">

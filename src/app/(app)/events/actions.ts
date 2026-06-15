@@ -1,15 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { events } from "@/db/schema";
-import { requireSession } from "@/lib/dal";
-import { bool, int, str } from "@/lib/form-data";
+import { events, finance } from "@/db/schema";
+import { requireWrite } from "@/lib/dal";
+import { bool, int, jsonList, str, tierList } from "@/lib/form-data";
+import { DUSA_STATUSES } from "@/lib/options";
+import { apiEnv } from "@/lib/reviews";
+import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
+import type { ActionResult } from "@/lib/undo-types";
 
-export type FormState = { error?: string } | undefined;
+export type FormState = ActionResult;
 
 function parseEvent(fd: FormData) {
   return {
@@ -18,11 +21,18 @@ function parseEvent(fd: FormData) {
     status: str(fd, "status"),
     startDate: str(fd, "start_date"),
     endDate: str(fd, "end_date"),
+    startTime: str(fd, "start_time"),
+    endTime: str(fd, "end_time"),
     trimester: str(fd, "trimester"),
     format: str(fd, "format"),
     venue: str(fd, "venue"),
+    ticketUrl: str(fd, "ticket_url"),
+    ticketTiers: tierList(fd, "ticket_tiers"),
     eventLeadId: int(fd, "event_lead_id"),
     committee: str(fd, "committee"),
+    supportTypes: jsonList(fd, "support_types"),
+    partnerOrg: str(fd, "partner_org"),
+    relatedSponsorId: int(fd, "related_sponsor_id"),
     dusaSubmissionStatus: str(fd, "dusa_submission_status"),
     dusaDeadline: str(fd, "dusa_deadline"),
     dusaRequired: bool(fd, "dusa_required"),
@@ -41,12 +51,12 @@ function revalidateEvents() {
 }
 
 export async function createEvent(_prev: FormState, fd: FormData): Promise<FormState> {
-  await requireSession();
+  await requireWrite("events");
   const values = parseEvent(fd);
   if (!values.name) return { error: "Event name is required." };
-  await db.insert(events).values(values);
+  const [row] = await db.insert(events).values(values).returning({ id: events.id });
   revalidateEvents();
-  redirect("/events");
+  return { ok: true, message: "Event created", undo: createToken("event", row?.id) };
 }
 
 export async function updateEvent(
@@ -54,23 +64,95 @@ export async function updateEvent(
   _prev: FormState,
   fd: FormData,
 ): Promise<FormState> {
-  await requireSession();
+  await requireWrite("events");
   const values = parseEvent(fd);
   if (!values.name) return { error: "Event name is required." };
+  const undo = await snapshotForUpdate("event", id);
   await db
     .update(events)
     .set({ ...values, updatedAt: new Date().toISOString() })
     .where(eq(events.id, id));
   revalidateEvents();
-  redirect("/events");
+  return { ok: true, message: "Event updated", undo };
 }
 
-export async function archiveEvent(id: number): Promise<void> {
-  await requireSession();
+export async function archiveEvent(id: number): Promise<FormState> {
+  await requireWrite("events");
   await db
     .update(events)
     .set({ archived: true, updatedAt: new Date().toISOString() })
     .where(eq(events.id, id));
   revalidateEvents();
-  redirect("/events");
+  return {
+    ok: true,
+    message: "Event archived",
+    undo: { op: "update", key: "event", id, prev: { archived: false } },
+  };
+}
+
+export async function deleteEvent(id: number): Promise<FormState> {
+  await requireWrite("events");
+  // Snapshot the row before it's gone so the toast can offer "Undo" (re-insert).
+  const undo = await snapshotForDelete("event", id);
+  // finance.related_event_id references events.id with no ON DELETE rule, so we
+  // must unlink any finance rows before the delete or Postgres rejects it.
+  // (Those links are NOT restored on undo — see undo-feature notes.)
+  await db.transaction(async (tx) => {
+    await tx
+      .update(finance)
+      .set({ relatedEventId: null, updatedAt: new Date().toISOString() })
+      .where(eq(finance.relatedEventId, id));
+    await tx.delete(events).where(eq(events.id, id));
+  });
+  revalidateEvents();
+  return { ok: true, message: "Event deleted", undo };
+}
+
+/**
+ * Create a Tally post-event review form for an event. The dsec-api owns the
+ * Tally key and the question template; this just calls it and revalidates so the
+ * stored form link (events.review_form_url) shows up on the page. Idempotent on
+ * the API side — calling again returns the existing form.
+ */
+export async function createReviewForm(eventId: number): Promise<FormState> {
+  await requireWrite("events");
+  const env = apiEnv();
+  if (!env) {
+    return {
+      error:
+        "Review forms need DSEC_API_URL and a write-scoped DSEC_API_KEY set in the dashboard env.",
+    };
+  }
+  try {
+    const res = await fetch(`${env.base}/events-api/${eventId}/review-form`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.key}` },
+    });
+    if (!res.ok) {
+      const detail = await res.text();
+      return { error: `Couldn't create the form (${res.status}): ${detail.slice(0, 200)}` };
+    }
+  } catch (e) {
+    return { error: `Could not reach the API: ${(e as Error).message}` };
+  }
+  revalidatePath(`/events/${eventId}/edit`);
+  revalidateEvents();
+  return { ok: true, message: "Review form created" };
+}
+
+/** Move a single event between DUSA pipeline columns (drag-and-drop). */
+export async function updateDusaStatus(
+  id: number,
+  status: string,
+): Promise<FormState> {
+  await requireWrite("events");
+  if (!DUSA_STATUSES.includes(status as (typeof DUSA_STATUSES)[number])) {
+    return { error: "Invalid DUSA status." };
+  }
+  await db
+    .update(events)
+    .set({ dusaSubmissionStatus: status, updatedAt: new Date().toISOString() })
+    .where(eq(events.id, id));
+  revalidateEvents();
+  return { ok: true };
 }

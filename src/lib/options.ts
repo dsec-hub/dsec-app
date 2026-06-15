@@ -39,6 +39,10 @@ export const PERSON_TYPES = [
 
 export const PERSON_STATUSES = ["Active", "Inactive", "Alumni", "Prospect"] as const;
 
+// Historical default committees. The editable source of truth is now the
+// `committee` DB table (Admin → Committees); these names seed it via
+// scripts/create-committee-table.ts. App code reads the DB list (see
+// lib/committee-queries.ts), not this constant.
 export const COMMITTEES = [
   "Executive",
   "Events",
@@ -56,7 +60,53 @@ export const SPONSOR_STAGES = [
   "Declined",
 ] as const;
 
-export const SPONSOR_TIERS = ["Bronze", "Silver", "Gold", "Platinum"] as const;
+export const SPONSOR_TIERS = ["Bronze", "Silver", "Gold", "Platinum", "Custom"] as const;
+
+/** Whether a record is a money sponsor or an in-kind partner. Null = Sponsor. */
+export const RELATIONSHIP_TYPES = ["Sponsor", "Partner"] as const;
+
+/** Kinds of support a sponsor/partner can provide — financial AND in-kind. Used
+ * on sponsors and events (a partner may run an event for us with no money). */
+export const SUPPORT_TYPES = [
+  "Cash",
+  "In-kind",
+  "Venue",
+  "Food",
+  "Speakers",
+  "Prizes",
+  "Marketing",
+  "MC",
+  "Volunteers",
+  "Equipment",
+  "Other",
+] as const;
+
+/** Roles a person can hold on a sponsorship relationship. */
+export const SPONSOR_CONTACT_ROLES = [
+  "Organiser",
+  "Contact",
+  "Decision Maker",
+  "Signatory",
+  "Finance",
+  "Other",
+] as const;
+
+export const LEAD_STATUSES = ["new", "contacted", "converted", "closed"] as const;
+
+export const LEAD_SOURCES = ["pricing_unlock", "enquiry", "cal_booking"] as const;
+
+export function leadStatusVariant(status: string | null | undefined): BadgeVariant {
+  switch (status) {
+    case "converted":
+      return "success";
+    case "contacted":
+      return "accent";
+    case "closed":
+      return "neutral";
+    default:
+      return "warning"; // new
+  }
+}
 
 export const FINANCE_TYPES = [
   "Grant",
