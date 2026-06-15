@@ -22,6 +22,7 @@ import {
   weightByKey,
 } from "@/lib/theme";
 import { updateAppearance } from "./actions";
+import { DisplaySizeControl, MotionControl } from "./client-prefs";
 import { ThemeModeControl } from "./theme-mode-control";
 
 function FontSelect({
@@ -196,6 +197,19 @@ export function AppearanceForm({
           <ThemeModeControl />
         </div>
       </Field>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Display size" hint="Scales the whole interface. Stored on this device.">
+          <div>
+            <DisplaySizeControl />
+          </div>
+        </Field>
+        <Field label="Motion" hint="“Reduced” minimises animation; “System” follows your OS.">
+          <div>
+            <MotionControl />
+          </div>
+        </Field>
+      </div>
 
       <Field label="Accent colour">
         <ColorField

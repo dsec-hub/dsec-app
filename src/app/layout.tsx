@@ -53,8 +53,10 @@ export const metadata: Metadata = {
 };
 
 // Runs before first paint: resolves the saved theme (or system preference) and
-// sets the `.dark` class + color-scheme so there is no light/dark flash.
-const themeInit = `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}var e=document.documentElement;e.classList.toggle('dark',t==='dark');e.style.colorScheme=t;}catch(e){}})();`;
+// sets the `.dark` class + color-scheme so there is no light/dark flash, then
+// applies the saved display-size + motion preferences (data-display / data-motion)
+// the same way so those never flash either. See settings/appearance/client-prefs.
+const themeInit = `(function(){try{var e=document.documentElement;var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}e.classList.toggle('dark',t==='dark');e.style.colorScheme=t;var d=localStorage.getItem('dsec-display');if(d==='compact'||d==='large')e.dataset.display=d;if(localStorage.getItem('dsec-motion')==='reduce')e.dataset.motion='reduce';}catch(e){}})();`;
 
 export default function RootLayout({
   children,

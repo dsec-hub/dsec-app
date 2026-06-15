@@ -92,6 +92,16 @@ html {
   color-scheme: light dark;
 }
 
+/* Display size (Appearance → Display size). Scales the whole UI by changing the
+   root font-size — Tailwind's spacing scale is rem-based, so paddings, gaps and
+   control heights track the text. "default" sets no attribute (browser 16px). */
+html[data-display="compact"] {
+  font-size: 15px;
+}
+html[data-display="large"] {
+  font-size: 17px;
+}
+
 body {
   background: var(--color-background);
   color: var(--color-foreground);
@@ -156,7 +166,9 @@ h3,
 
 /* Respect "reduce motion": neutralise non-essential animation/transition (theme
    crossfade, skeleton pulse, the top-progress trickle, hover lifts) for users
-   who ask for it, while leaving instant state changes intact. */
+   who ask for it, while leaving instant state changes intact. Honours BOTH the
+   OS setting (prefers-reduced-motion) and the in-app override
+   (Appearance → Motion → Reduced, which sets data-motion="reduce"). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -166,4 +178,12 @@ h3,
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
 }
