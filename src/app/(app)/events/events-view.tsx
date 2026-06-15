@@ -212,7 +212,9 @@ function EventRow({ e, className }: { e: EventWithLead; className?: string }) {
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <Badge variant={dusaVariant(e.dusaSubmissionStatus)}>{e.dusaSubmissionStatus ?? "—"}</Badge>
+        {e.status !== "Completed" && (
+          <Badge variant={dusaVariant(e.dusaSubmissionStatus)}>{e.dusaSubmissionStatus ?? "—"}</Badge>
+        )}
         <Badge variant={eventStatusVariant(e.status)}>{e.status ?? "—"}</Badge>
       </div>
     </Link>
