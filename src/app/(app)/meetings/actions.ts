@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { meetings, type Attendee } from "@/db/workspace-schema";
+import { meetings, tasks, type Attendee } from "@/db/workspace-schema";
 import { requireWrite } from "@/lib/dal";
 import { int, str } from "@/lib/form-data";
 import { logMutation } from "@/lib/usage";
@@ -107,4 +107,56 @@ export async function deleteMeeting(id: number): Promise<void> {
   await logMutation(user, "delete", "meeting", id);
   revalidateMeetings();
   redirect("/meetings");
+}
+
+/**
+ * Turn one of a meeting's action items into a real task on the global board —
+ * the high-quality-tool move (Notion/Linear) of making decisions actionable.
+ * The new task inherits the meeting's related event (so it threads through the
+ * connections graph) and records its provenance in the description. The action
+ * item's free-text `owner`/`due` are kept in the description; only a real
+ * ISO date is promoted to the task's dueDate. Requires meetings write.
+ */
+export async function createTaskFromActionItem(
+  meetingId: number,
+  index: number,
+): Promise<void> {
+  const user = await requireWrite("meetings");
+  const [meeting] = await db
+    .select({
+      title: meetings.title,
+      actionItems: meetings.actionItems,
+      relatedEventId: meetings.relatedEventId,
+    })
+    .from(meetings)
+    .where(eq(meetings.id, meetingId))
+    .limit(1);
+  if (!meeting) return;
+
+  const item = (meeting.actionItems ?? [])[index];
+  if (!item?.text) return;
+
+  const isoDue = item.due && /^\d{4}-\d{2}-\d{2}$/.test(item.due) ? item.due : null;
+  const desc = [
+    `From meeting: ${meeting.title}`,
+    item.owner ? `Owner: ${item.owner}` : null,
+    item.due && !isoDue ? `Due (as noted): ${item.due}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const [row] = await db
+    .insert(tasks)
+    .values({
+      title: item.text,
+      status: "To Do",
+      dueDate: isoDue,
+      relatedEventId: meeting.relatedEventId ?? null,
+      description: desc,
+    })
+    .returning({ id: tasks.id });
+  await logMutation(user, "create", "task", row?.id);
+  revalidatePath(`/meetings/${meetingId}`);
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
 }

@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Markdown } from "@/components/markdown";
+import { RelatedTasks } from "@/components/related-tasks";
 import { Badge, Card, PageHeader, SectionCard, buttonSecondary } from "@/components/ui";
 import { requireModule } from "@/lib/dal";
 import { formatDate } from "@/lib/format";
+import { getEventById } from "@/lib/queries";
 import { canWrite } from "@/lib/rbac";
 import { projectStatusVariant } from "@/lib/workspace-options";
-import { getPersonOptions, getProjectById } from "@/lib/workspace-queries";
+import { getPersonOptions, getProjectById, getRelatedTasks } from "@/lib/workspace-queries";
 
 export default async function ProjectDetailPage({
   params,
@@ -19,9 +21,15 @@ export default async function ProjectDetailPage({
   const { id } = await params;
   const pid = Number(id);
   if (Number.isNaN(pid)) notFound();
-  const [project, people] = await Promise.all([getProjectById(pid), getPersonOptions()]);
+  const [project, people, relatedTasks] = await Promise.all([
+    getProjectById(pid),
+    getPersonOptions(),
+    getRelatedTasks("project", pid),
+  ]);
   if (!project) notFound();
   const lead = people.find((p) => p.id === project.leadId)?.name;
+  // Cross-link: the event this project came out of (if any).
+  const relatedEvent = project.relatedEventId ? await getEventById(project.relatedEventId) : null;
 
   return (
     <>
@@ -70,6 +78,20 @@ export default async function ProjectDetailPage({
         <Meta label="Timeline" value={`${formatDate(project.startDate)} → ${formatDate(project.endDate)}`} />
         <Meta label="Repository" value={project.repoUrl ? <ExtLink href={project.repoUrl} /> : "—"} />
         <Meta label="Demo" value={project.demoUrl ? <ExtLink href={project.demoUrl} /> : "—"} />
+        {relatedEvent && (
+          <Meta
+            label="From event"
+            value={
+              <Link href={`/events/${relatedEvent.id}`} className="text-accent-text hover:underline">
+                {relatedEvent.name}
+              </Link>
+            }
+          />
+        )}
+      </div>
+
+      <div className="mt-6">
+        <RelatedTasks kind="project" parentId={project.id} tasks={relatedTasks} canWrite={writable} />
       </div>
 
       {project.notes && (

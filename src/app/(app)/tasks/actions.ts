@@ -11,8 +11,40 @@ import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from 
 import type { ActionResult } from "@/lib/undo-types";
 import { logMutation } from "@/lib/usage";
 import { DEFAULT_BOARD_COLUMNS } from "@/lib/workspace-options";
+import type { TaskParentKind } from "@/lib/workspace-queries";
 
 export type FormState = ActionResult;
+
+// Parent entity → the dashboard module that governs it. Quick-adding a task from
+// an entity's detail page requires write to that module (you manage the entity).
+const PARENT_MODULE: Record<TaskParentKind, "sponsors" | "events" | "projects"> = {
+  sponsor: "sponsors",
+  event: "events",
+  project: "projects",
+};
+
+/**
+ * Quick-add a task linked to a parent entity (sponsor/event/project) from that
+ * entity's detail page. The task also appears on the global board. One action
+ * for all three relations (replaces the old per-entity quickAdd*Task).
+ */
+export async function quickAddRelatedTask(
+  kind: TaskParentKind,
+  parentId: number,
+  fd: FormData,
+): Promise<void> {
+  const user = await requireWrite(PARENT_MODULE[kind]);
+  const title = str(fd, "title");
+  if (!title) return;
+  const values: typeof tasks.$inferInsert = { title, status: "To Do" };
+  if (kind === "sponsor") values.relatedSponsorId = parentId;
+  else if (kind === "event") values.relatedEventId = parentId;
+  else values.relatedProjectId = parentId;
+  const [row] = await db.insert(tasks).values(values).returning({ id: tasks.id });
+  await logMutation(user, "create", "task", row?.id);
+  revalidatePath(`/${PARENT_MODULE[kind]}/${parentId}`);
+  revalidateTasks();
+}
 
 function parseTask(fd: FormData) {
   return {

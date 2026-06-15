@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { CommitteeDot } from "@/components/committee-select";
 import { Markdown } from "@/components/markdown";
 import { MediaManager } from "@/components/media-manager";
+import { RelatedTasks } from "@/components/related-tasks";
 import { Badge, Card, PageHeader, SectionCard, buttonSecondary } from "@/components/ui";
 import { getCommitteeOptions } from "@/lib/committee-queries";
 import { requireModule } from "@/lib/dal";
@@ -12,7 +13,7 @@ import { dusaVariant, eventStatusVariant } from "@/lib/options";
 import { getEventById, getPeopleOptions, getSponsorOptions } from "@/lib/queries";
 import { canWrite } from "@/lib/rbac";
 import { fetchReviewSummary } from "@/lib/reviews";
-import { getMedia } from "@/lib/workspace-queries";
+import { getMedia, getRelatedTasks } from "@/lib/workspace-queries";
 
 import { ReviewPanel } from "../review-panel";
 
@@ -27,12 +28,13 @@ export default async function EventDetailPage({
   const eventId = Number(id);
   if (Number.isNaN(eventId)) notFound();
 
-  const [event, people, sponsors, committees, media] = await Promise.all([
+  const [event, people, sponsors, committees, media, relatedTasks] = await Promise.all([
     getEventById(eventId),
     getPeopleOptions(),
     getSponsorOptions(),
     getCommitteeOptions(),
     getMedia("event", eventId),
+    getRelatedTasks("event", eventId),
   ]);
   if (!event) notFound();
 
@@ -194,6 +196,10 @@ export default async function EventDetailPage({
           </div>
         </SectionCard>
       )}
+
+      <div className="mb-6">
+        <RelatedTasks kind="event" parentId={eventId} tasks={relatedTasks} canWrite={writable} />
+      </div>
 
       {media.length > 0 && (
         <div className="mb-6">

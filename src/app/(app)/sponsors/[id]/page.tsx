@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { RelatedTasks } from "@/components/related-tasks";
 import { Badge, EmptyState, PageHeader, SectionCard, StatCard, buttonSecondary } from "@/components/ui";
 import { requireModule } from "@/lib/dal";
 import { formatAUD, formatDate } from "@/lib/format";
@@ -16,7 +17,6 @@ import {
 
 import { SponsorContacts } from "./sponsor-contacts";
 import { SponsorDocuments } from "./sponsor-documents";
-import { SponsorTasks } from "./sponsor-tasks";
 
 export default async function SponsorDetailPage({
   params,
@@ -101,7 +101,7 @@ export default async function SponsorDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SponsorContacts sponsorId={sponsorId} contacts={contacts} people={people} canWrite={writable} />
-        <SponsorTasks sponsorId={sponsorId} tasks={tasks} canWrite={writable} />
+        <RelatedTasks kind="sponsor" parentId={sponsorId} tasks={tasks} canWrite={writable} />
         <SectionCard title={`Linked events · ${linkedEvents.length}`}>
           {linkedEvents.length === 0 ? (
             <EmptyState>

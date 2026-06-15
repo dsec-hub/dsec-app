@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { sponsors } from "@/db/schema";
-import { sponsorContacts, tasks } from "@/db/workspace-schema";
+import { sponsorContacts } from "@/db/workspace-schema";
 import { apiEnv } from "@/lib/api-env";
 import { requireWrite } from "@/lib/dal";
 import { bool, int, jsonList, num, str } from "@/lib/form-data";
@@ -115,23 +115,8 @@ export async function deleteSponsorContact(id: number, sponsorId: number): Promi
   revalidatePath(`/sponsors/${sponsorId}`);
 }
 
-// --- Per-sponsor task board (tasks tagged to this sponsor) ------------------
-// Created in the Inbox (no board) with relatedSponsorId set, so they surface on
-// the sponsor page AND the global /tasks board automatically.
-
-export async function quickAddSponsorTask(sponsorId: number, fd: FormData): Promise<void> {
-  const user = await requireWrite("sponsors");
-  const title = str(fd, "title");
-  if (!title) return;
-  const [row] = await db
-    .insert(tasks)
-    .values({ title, relatedSponsorId: sponsorId, status: "To Do" })
-    .returning({ id: tasks.id });
-  await logMutation(user, "create", "task", row?.id);
-  revalidatePath(`/sponsors/${sponsorId}`);
-  revalidatePath("/tasks");
-  revalidatePath("/dashboard");
-}
+// (Per-sponsor quick-add task moved to the shared quickAddRelatedTask — see
+// tasks/actions.ts + components/related-tasks.tsx.)
 
 // --- Sponsor documents (PDF/image uploads → dsec-api → Supabase) ------------
 

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 
 import { Markdown } from "@/components/markdown";
 import { Badge, PageHeader, SectionCard, buttonSecondary } from "@/components/ui";
+
+import { MeetingActionItems } from "./action-items";
 import { requireModule } from "@/lib/dal";
 import { formatDate } from "@/lib/format";
 import { canWrite } from "@/lib/rbac";
@@ -56,19 +58,7 @@ export default async function MeetingDetailPage({
       )}
 
       {actions.length > 0 && (
-        <SectionCard title={`Action items (${actions.length})`} className="mb-6">
-          <ul className="divide-y divide-border">
-            {actions.map((a, i) => (
-              <li key={i} className="px-5 py-3">
-                <div className="text-sm">{a.text}</div>
-                <div className="mt-0.5 text-xs text-muted">
-                  {a.owner ?? "Unassigned"}
-                  {a.due ? ` · due ${a.due}` : ""}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </SectionCard>
+        <MeetingActionItems meetingId={meeting.id} items={actions} canWrite={writable} />
       )}
 
       {meeting.notes && (

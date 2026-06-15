@@ -488,10 +488,23 @@ export async function getSponsorContacts(sponsorId: number) {
     .orderBy(asc(sponsorContacts.sortOrder), asc(sponsorContacts.id));
 }
 
-/** Tasks tagged to a sponsor — the per-sponsor task board. Open first. */
-export type SponsorTaskRow = Awaited<ReturnType<typeof getSponsorTasks>>[number];
+// --- Related tasks (cross-entity connections) ------------------------------
+// Tasks can be tagged to a sponsor/event/project; the same shape is surfaced on
+// each of their detail pages (the per-entity task board). One query, keyed by
+// which relation column to filter on.
 
-export async function getSponsorTasks(sponsorId: number) {
+/** Which `tasks` column links to a given parent entity. */
+export type TaskParentKind = "sponsor" | "event" | "project";
+const TASK_PARENT_COLUMN = {
+  sponsor: tasks.relatedSponsorId,
+  event: tasks.relatedEventId,
+  project: tasks.relatedProjectId,
+} as const;
+
+export type RelatedTaskRow = Awaited<ReturnType<typeof getRelatedTasks>>[number];
+
+/** Active tasks linked to a parent entity, open tasks first. */
+export async function getRelatedTasks(kind: TaskParentKind, parentId: number) {
   return db
     .select({
       id: tasks.id,
@@ -504,8 +517,14 @@ export async function getSponsorTasks(sponsorId: number) {
     })
     .from(tasks)
     .leftJoin(people, eq(tasks.assigneeId, people.id))
-    .where(and(eq(tasks.relatedSponsorId, sponsorId), eq(tasks.archived, false)))
+    .where(and(eq(TASK_PARENT_COLUMN[kind], parentId), eq(tasks.archived, false)))
     .orderBy(sql`${tasks.completedAt} is not null`, asc(tasks.id));
+}
+
+/** Tasks tagged to a sponsor — kept as a named alias for existing callers. */
+export type SponsorTaskRow = RelatedTaskRow;
+export function getSponsorTasks(sponsorId: number) {
+  return getRelatedTasks("sponsor", sponsorId);
 }
 
 /** Events this sponsor/partner is linked to (the other side of the link). */

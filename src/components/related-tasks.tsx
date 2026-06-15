@@ -7,32 +7,48 @@ import { TextInput } from "@/components/form";
 import { Badge, EmptyState, SectionCard, buttonGhost } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import { priorityVariant } from "@/lib/workspace-options";
-import type { SponsorTaskRow } from "@/lib/workspace-queries";
+import type { RelatedTaskRow, TaskParentKind } from "@/lib/workspace-queries";
 
-import { quickAddSponsorTask } from "../actions";
+import { quickAddRelatedTask } from "@/app/(app)/tasks/actions";
 
-export function SponsorTasks({
-  sponsorId,
+const NOUN: Record<TaskParentKind, string> = {
+  sponsor: "sponsor",
+  event: "event",
+  project: "project",
+};
+
+/**
+ * The per-entity task board shown on a sponsor / event / project detail page:
+ * the tasks linked to that record, plus a quick-add that tags a new task to it
+ * (and surfaces it on the global board too). One component for all three
+ * relations — see getRelatedTasks / quickAddRelatedTask.
+ */
+export function RelatedTasks({
+  kind,
+  parentId,
   tasks,
   canWrite,
 }: {
-  sponsorId: number;
-  tasks: SponsorTaskRow[];
+  kind: TaskParentKind;
+  parentId: number;
+  tasks: RelatedTaskRow[];
   canWrite: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
 
   return (
     <SectionCard
-      title={`Task board · ${tasks.length}`}
+      title={`Tasks · ${tasks.length}`}
       action={
         <Link href="/tasks" className={buttonGhost}>
-          Open global tasks
+          Open global board
         </Link>
       }
     >
       {tasks.length === 0 ? (
-        <EmptyState>No tasks yet. Add one below — it also shows on the global board.</EmptyState>
+        <EmptyState>
+          No tasks yet. Add one below — it also shows on the global board.
+        </EmptyState>
       ) : (
         <ul className="divide-y divide-border">
           {tasks.map((t) => {
@@ -67,12 +83,12 @@ export function SponsorTasks({
         <form
           ref={formRef}
           action={async (fd) => {
-            await quickAddSponsorTask(sponsorId, fd);
+            await quickAddRelatedTask(kind, parentId, fd);
             formRef.current?.reset();
           }}
           className="flex items-center gap-2 border-t border-border px-5 py-3"
         >
-          <TextInput name="title" placeholder="Add a task for this sponsor…" />
+          <TextInput name="title" placeholder={`Add a task for this ${NOUN[kind]}…`} />
           <button className={buttonGhost} type="submit">
             Add
           </button>
