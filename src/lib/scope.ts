@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/db";
 import { projects } from "@/db/workspace-schema";
-import { canAccess, isOwner, scopeFor, type ScopedAccess } from "@/lib/rbac";
+import { canAccess, canWrite, isOwner, scopeFor, type ScopedAccess } from "@/lib/rbac";
 import type { CurrentUser } from "@/lib/dal";
 
 /**
@@ -57,7 +57,10 @@ export async function requireProjectView(
   project: { leadId: number | null },
 ): Promise<{ writable: boolean }> {
   if (canAccess(user.modules, "projects")) {
-    return { writable: user.writeModules.includes("projects") };
+    // Use canWrite (not a raw .includes) so an admin superuser — whose
+    // writeModules need not list "projects" — is writable, matching the list +
+    // edit pages.
+    return { writable: canWrite(user.modules, user.writeModules, "projects") };
   }
   if (isOwner(user.personId, project.leadId)) {
     return { writable: false }; // scoped owner: read-only
