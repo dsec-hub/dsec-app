@@ -4,12 +4,7 @@
 // key, so it must only be used in Server Components / Server Actions.
 import "server-only";
 
-export function apiEnv(): { base: string; key: string } | null {
-  const base = process.env.DSEC_API_URL;
-  const key = process.env.DSEC_API_KEY;
-  if (!base || !key) return null;
-  return { base: base.replace(/\/+$/, ""), key };
-}
+import { apiEnv } from "@/lib/api-env";
 
 export type ReviewSummary = {
   responseCount: number;

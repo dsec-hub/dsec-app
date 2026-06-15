@@ -117,21 +117,6 @@ export async function getFinanceSummary() {
   };
 }
 
-export async function getRecentTransactions(limit = 12) {
-  const [report] = await db
-    .select({ id: financeReports.id })
-    .from(financeReports)
-    .where(eq(financeReports.isCurrent, true))
-    .limit(1);
-  if (!report) return [];
-  return db
-    .select()
-    .from(financeTransactions)
-    .where(eq(financeTransactions.reportId, report.id))
-    .orderBy(desc(financeTransactions.postingDate))
-    .limit(limit);
-}
-
 export async function getCurrentTransactions() {
   const [report] = await db
     .select({ id: financeReports.id })
@@ -643,12 +628,6 @@ export async function getMedia(entityType: MediaEntityType, entityId: number) {
       ),
     )
     .orderBy(asc(mediaAssets.sortOrder), asc(mediaAssets.id));
-}
-
-/** A sponsor's brand logo (single image, role="logo"), or null. */
-export async function getSponsorLogo(sponsorId: number): Promise<MediaItem | null> {
-  const rows = await getMedia("sponsor", sponsorId);
-  return rows.find((m) => m.role === "logo") ?? rows[0] ?? null;
 }
 
 export type Option = { id: number; name: string };

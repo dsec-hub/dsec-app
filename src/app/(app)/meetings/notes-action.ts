@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { apiEnv } from "@/lib/api-env";
 import { requireWrite } from "@/lib/dal";
 import { logMutation } from "@/lib/usage";
 
@@ -14,9 +15,8 @@ export type NotesState = { error?: string; ok?: string } | undefined;
  */
 export async function generateMeetingNotes(meetingId: number): Promise<NotesState> {
   const user = await requireWrite("meetings");
-  const base = process.env.DSEC_API_URL;
-  const key = process.env.DSEC_API_KEY;
-  if (!base || !key) {
+  const env = apiEnv();
+  if (!env) {
     return {
       error:
         "AI notes need DSEC_API_URL and a trigger-scoped DSEC_API_KEY set in the dashboard env. " +
@@ -24,9 +24,9 @@ export async function generateMeetingNotes(meetingId: number): Promise<NotesStat
     };
   }
   try {
-    const res = await fetch(`${base.replace(/\/+$/, "")}/meetings/${meetingId}/generate-notes`, {
+    const res = await fetch(`${env.base}/meetings/${meetingId}/generate-notes`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${env.key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ create_document: true }),
     });
     if (!res.ok) {

@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sponsors } from "@/db/schema";
 import { sponsorContacts, tasks } from "@/db/workspace-schema";
+import { apiEnv } from "@/lib/api-env";
 import { requireWrite } from "@/lib/dal";
 import { bool, int, jsonList, num, str } from "@/lib/form-data";
 import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
@@ -133,13 +134,6 @@ export async function quickAddSponsorTask(sponsorId: number, fd: FormData): Prom
 }
 
 // --- Sponsor documents (PDF/image uploads → dsec-api → Supabase) ------------
-
-function apiEnv(): { base: string; key: string } | null {
-  const base = process.env.DSEC_API_URL;
-  const key = process.env.DSEC_API_KEY;
-  if (!base || !key) return null;
-  return { base: base.replace(/\/+$/, ""), key };
-}
 
 export async function uploadSponsorDocument(
   sponsorId: number,

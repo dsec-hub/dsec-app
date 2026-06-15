@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { apiEnv } from "@/lib/api-env";
 import { requireWrite } from "@/lib/dal";
 import { logMutation } from "@/lib/usage";
 
@@ -20,13 +21,6 @@ const SECTION = {
   speaker: { module: "events", base: "/events" },
   person: { module: "people", base: "/people" },
 } as const;
-
-function apiEnv(): { base: string; key: string } | null {
-  const base = process.env.DSEC_API_URL;
-  const key = process.env.DSEC_API_KEY;
-  if (!base || !key) return null;
-  return { base: base.replace(/\/+$/, ""), key };
-}
 
 /**
  * Confirm media `id` actually belongs to (entityType, entityId).
