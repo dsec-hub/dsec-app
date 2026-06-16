@@ -86,6 +86,11 @@ export const people = pgTable("people", {
 	bio: text(),
 	showOnWebsite: boolean("show_on_website").default(false).notNull(),
 	displayOrder: integer("display_order").default(0).notNull(),
+	// Internal visibility: when true, only admin users see this person in the app
+	// (People list + detail). Lets the exec keep sensitive contacts off the
+	// general committee's view. Distinct from `show_on_website` (public site) and
+	// `archived` (soft delete). Added by scripts/add-people-admin-only-column.ts.
+	adminOnly: boolean("admin_only").default(false).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	archived: boolean().default(false).notNull(),
@@ -127,17 +132,27 @@ export const events = pgTable("events", {
 	externalGuests: boolean("external_guests").default(false).notNull(),
 	expectedAttendance: integer("expected_attendance"),
 	actualAttendance: integer("actual_attendance"),
-	description: text(),
+	// Explicit name required: `events` is also defined in workspace-schema.ts
+	// (which has `notes` instead of `description`). drizzle's CasingCache is
+	// shared per physical table name across the one db instance, so a no-name
+	// (keyAsName) column unique to one definition resolves to `undefined` when
+	// the other definition was queried first → escapeName(undefined) crash.
+	description: text("description"),
 	// Post-event review form (Tally) — set by the dsec-api reviews feature when a
 	// form is created; null means none yet. URL is the public fill link.
 	reviewFormId: varchar("review_form_id", { length: 64 }),
 	reviewFormUrl: varchar("review_form_url", { length: 512 }),
 	reviewFormCreatedAt: timestamp("review_form_created_at", { withTimezone: true, mode: 'string' }),
+	// Draft (false) vs published (true). New events default to draft and are
+	// hidden from the public website; the dashboard publishes them. Mirrors
+	// projects.is_public. Added via Alembic (a9f3c1e7d2b4) — dsec-api owns events.
+	isPublic: boolean("is_public").default(false).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	archived: boolean().default(false).notNull(),
 }, (table) => [
 	index("ix_events_archived").using("btree", table.archived.asc().nullsLast().op("bool_ops")),
+	index("ix_events_is_public").using("btree", table.isPublic.asc().nullsLast().op("bool_ops")),
 	index("ix_events_dusa_deadline").using("btree", table.dusaDeadline.asc().nullsLast().op("date_ops")),
 	index("ix_events_dusa_submission_status").using("btree", table.dusaSubmissionStatus.asc().nullsLast().op("text_ops")),
 	index("ix_events_event_lead_id").using("btree", table.eventLeadId.asc().nullsLast().op("int4_ops")),

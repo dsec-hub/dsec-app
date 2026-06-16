@@ -5,6 +5,7 @@ export type ModuleKey =
   | "events"
   | "people"
   | "sponsors"
+  | "partners"
   | "finance"
   | "tasks"
   | "projects"
@@ -27,6 +28,7 @@ export const MODULES: ModuleDef[] = [
   { key: "events", label: "Events", href: "/events", description: "Event planning, DUSA submissions, and the calendar." },
   { key: "people", label: "People", href: "/people", description: "Committee roster and contacts." },
   { key: "sponsors", label: "Sponsors", href: "/sponsors", description: "Sponsorship pipeline and agreements." },
+  { key: "partners", label: "Partners", href: "/partners", description: "Collaborator clubs and partner orgs that co-host events." },
   { key: "finance", label: "Finance", href: "/finance", description: "Budget, grants, reimbursements, and income." },
   { key: "tasks", label: "Tasks", href: "/tasks", description: "Trello-style task boards and assignments." },
   { key: "projects", label: "Projects", href: "/projects", description: "Community projects shown on the public website." },

@@ -51,16 +51,30 @@ export function EventSpeakers({
         </EmptyState>
       ) : (
         <div className="space-y-4 px-5 py-5">
-          {speakers.map((sp) => (
+          {speakers.map((sp) => {
+            const ownPhoto = sp.photos[0]?.webpUrl ?? null;
+            const effectivePhoto = ownPhoto ?? sp.inheritedPhoto;
+            const inheriting = !ownPhoto && !!sp.inheritedPhoto;
+            return (
             <div key={sp.id} className="rounded-lg border border-border p-4">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium">{sp.displayName}</span>
-                    {sp.personId && <Badge variant="neutral">Linked</Badge>}
+                <div className="flex min-w-0 items-start gap-3">
+                  {effectivePhoto && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={effectivePhoto}
+                      alt=""
+                      className="size-10 shrink-0 rounded-full object-cover"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium">{sp.displayName}</span>
+                      {sp.personId && <Badge variant="neutral">Linked</Badge>}
+                    </div>
+                    {sp.title && <div className="text-xs text-muted">{sp.title}</div>}
+                    {sp.bio && <p className="mt-1 text-xs text-muted/80">{sp.bio}</p>}
                   </div>
-                  {sp.title && <div className="text-xs text-muted">{sp.title}</div>}
-                  {sp.bio && <p className="mt-1 text-xs text-muted/80">{sp.bio}</p>}
                 </div>
                 {canWrite && (
                   <div className="flex shrink-0 items-center gap-2">
@@ -83,10 +97,18 @@ export function EventSpeakers({
                   entityId={sp.id}
                   existing={sp.photos}
                   canWrite={canWrite}
+                  emptyOverride={
+                    inheriting
+                      ? canWrite
+                        ? `Using ${sp.displayName}'s profile photo. Add one here only to use a different photo for this event.`
+                        : `Using ${sp.displayName}'s profile photo.`
+                      : undefined
+                  }
                 />
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

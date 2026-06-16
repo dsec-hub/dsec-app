@@ -69,7 +69,7 @@ export default async function ProjectsPage() {
       {stats && (
         <div className="mb-6 grid grid-cols-3 gap-4">
           <StatTile label="Total" value={stats.total} accent />
-          <StatTile label="Public" value={stats.public} sub="visible on the site" />
+          <StatTile label="Published" value={stats.public} sub="live on the site" />
           <StatTile label="Shipped" value={stats.shipped} tone="success" sub="completed or showcased" />
         </div>
       )}
@@ -137,8 +137,8 @@ export default async function ProjectsPage() {
 
               <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-4">
                 <div className="flex flex-wrap items-center gap-1.5">
+                  {!p.isPublic && <Badge variant="warning">Draft</Badge>}
                   <Badge variant={projectStatusVariant(p.status)}>{p.status ?? "—"}</Badge>
-                  {p.isPublic && <Badge variant="accent">Public</Badge>}
                   {p.featured && (
                     <span className="text-accent-text" title="Featured" aria-label="Featured">
                       ★

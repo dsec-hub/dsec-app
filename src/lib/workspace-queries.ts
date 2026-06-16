@@ -6,6 +6,7 @@ import { db } from "@/db";
 import {
   attachments,
   documents,
+  eventPartners,
   eventSpeakers,
   eventSponsors,
   events,
@@ -15,6 +16,7 @@ import {
   meetings,
   memberReports,
   members,
+  partners,
   people,
   projects,
   sponsorContacts,
@@ -346,7 +348,7 @@ export async function getEventSpeakers(eventId: number) {
     .where(and(eq(eventSpeakers.eventId, eventId), eq(eventSpeakers.archived, false)))
     .orderBy(asc(eventSpeakers.sortOrder), asc(eventSpeakers.id));
   if (!rows.length) return [];
-  // Batch-load every speaker's photos in one query, then group by speaker id.
+  // Batch-load every speaker's own photos in one query, then group by speaker id.
   const photos = await db
     .select()
     .from(mediaAssets)
@@ -364,11 +366,43 @@ export async function getEventSpeakers(eventId: number) {
     list.push(p);
     byId.set(p.entityId, list);
   }
-  return rows.map((r) => ({
-    ...r,
-    displayName: r.name || r.personName || "Speaker",
-    photos: byId.get(r.id) ?? [],
-  }));
+  // For linked speakers with no own photo, fall back to the person's profile
+  // photo (entity_type="person") so linking a directory person reuses their
+  // headshot automatically; a speaker-specific upload still overrides it.
+  const inheritIds = [
+    ...new Set(
+      rows
+        .filter((r) => r.personId && !byId.get(r.id)?.length)
+        .map((r) => r.personId as number),
+    ),
+  ];
+  const personPhotos = inheritIds.length
+    ? await db
+        .select()
+        .from(mediaAssets)
+        .where(
+          and(
+            eq(mediaAssets.archived, false),
+            eq(mediaAssets.entityType, "person"),
+            inArray(mediaAssets.entityId, inheritIds),
+          ),
+        )
+        .orderBy(asc(mediaAssets.sortOrder), asc(mediaAssets.id))
+    : [];
+  const personPhotoById = new Map<number, string>();
+  for (const p of personPhotos) {
+    if (!personPhotoById.has(p.entityId)) personPhotoById.set(p.entityId, p.webpUrl);
+  }
+  return rows.map((r) => {
+    const own = byId.get(r.id) ?? [];
+    return {
+      ...r,
+      displayName: r.name || r.personName || "Speaker",
+      photos: own,
+      inheritedPhoto:
+        own.length === 0 && r.personId ? personPhotoById.get(r.personId) ?? null : null,
+    };
+  });
 }
 
 /** Sponsors linked to an event (for the logo wall), each with its logo. */
@@ -410,6 +444,120 @@ export async function getEventSponsors(eventId: number) {
   const byId = new Map<number, (typeof logos)[number]>();
   for (const l of logos) if (!byId.has(l.entityId)) byId.set(l.entityId, l);
   return rows.map((r) => ({ ...r, logo: byId.get(r.sponsorId) ?? null }));
+}
+
+/** Partners (collaborator clubs) linked to an event, each with its logo.
+ * Mirrors getEventSponsors — the logo lives on the partner and is reused. */
+export type EventPartnerRow = Awaited<ReturnType<typeof getEventPartners>>[number];
+
+export async function getEventPartners(eventId: number) {
+  const rows = await db
+    .select({
+      id: eventPartners.id,
+      partnerId: eventPartners.partnerId,
+      role: eventPartners.role,
+      sortOrder: eventPartners.sortOrder,
+      name: partners.name,
+      website: partners.website,
+    })
+    .from(eventPartners)
+    .innerJoin(partners, eq(eventPartners.partnerId, partners.id))
+    .where(
+      and(
+        eq(eventPartners.eventId, eventId),
+        eq(eventPartners.archived, false),
+        eq(partners.archived, false),
+      ),
+    )
+    .orderBy(asc(eventPartners.sortOrder), asc(eventPartners.id));
+  if (!rows.length) return [];
+  const logos = await db
+    .select()
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.archived, false),
+        eq(mediaAssets.entityType, "partner"),
+        eq(mediaAssets.role, "logo"),
+        inArray(mediaAssets.entityId, rows.map((r) => r.partnerId)),
+      ),
+    )
+    .orderBy(asc(mediaAssets.sortOrder), asc(mediaAssets.id));
+  const byId = new Map<number, (typeof logos)[number]>();
+  for (const l of logos) if (!byId.has(l.entityId)) byId.set(l.entityId, l);
+  return rows.map((r) => ({ ...r, logo: byId.get(r.partnerId) ?? null }));
+}
+
+// ===========================================================================
+// Partners (collaborator clubs) — lightweight, no pipeline
+// ===========================================================================
+
+export type PartnerRow = typeof partners.$inferSelect;
+
+/** All partners with their logo, for the Partners list page. */
+export type PartnerWithLogo = PartnerRow & { logo: string | null };
+
+export async function getPartners(): Promise<PartnerWithLogo[]> {
+  const rows = await db
+    .select()
+    .from(partners)
+    .where(eq(partners.archived, false))
+    .orderBy(asc(partners.name));
+  if (!rows.length) return [];
+  const logos = await db
+    .select()
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.archived, false),
+        eq(mediaAssets.entityType, "partner"),
+        eq(mediaAssets.role, "logo"),
+        inArray(mediaAssets.entityId, rows.map((r) => r.id)),
+      ),
+    )
+    .orderBy(asc(mediaAssets.sortOrder), asc(mediaAssets.id));
+  const byId = new Map<number, string>();
+  for (const l of logos) if (!byId.has(l.entityId)) byId.set(l.entityId, l.webpUrl);
+  return rows.map((r) => ({ ...r, logo: byId.get(r.id) ?? null }));
+}
+
+export async function getPartnerById(id: number): Promise<PartnerRow | null> {
+  const [row] = await db.select().from(partners).where(eq(partners.id, id)).limit(1);
+  return row ?? null;
+}
+
+/** Active partners for the "add to event" <select>. */
+export async function getPartnerOptions(): Promise<Option[]> {
+  return db
+    .select({ id: partners.id, name: partners.name })
+    .from(partners)
+    .where(eq(partners.archived, false))
+    .orderBy(asc(partners.name));
+}
+
+/** Events this partner is linked to (the other side of the m2m), with the
+ * optional per-event role. Shown on the partner detail page. */
+export type PartnerEventRow = Awaited<ReturnType<typeof getPartnerEvents>>[number];
+
+export async function getPartnerEvents(partnerId: number) {
+  return db
+    .select({
+      id: events.id,
+      name: events.name,
+      status: events.status,
+      startDate: events.startDate,
+      role: eventPartners.role,
+    })
+    .from(eventPartners)
+    .innerJoin(events, eq(eventPartners.eventId, events.id))
+    .where(
+      and(
+        eq(eventPartners.partnerId, partnerId),
+        eq(eventPartners.archived, false),
+        eq(events.archived, false),
+      ),
+    )
+    .orderBy(desc(events.startDate));
 }
 
 // ===========================================================================
@@ -634,7 +782,7 @@ export async function getDocumentById(id: number) {
 export type MediaItem = Awaited<ReturnType<typeof getMedia>>[number];
 
 /** The entity kinds that can own uploaded media (mirrors dsec-api ENTITY_TYPES). */
-export type MediaEntityType = "event" | "project" | "sponsor" | "speaker" | "person";
+export type MediaEntityType = "event" | "project" | "sponsor" | "speaker" | "person" | "partner";
 
 /** Images attached to an entity, ordered for the dashboard gallery. */
 export async function getMedia(entityType: MediaEntityType, entityId: number) {

@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { sponsorPackages } from "@/db/schema";
 import { requireWrite } from "@/lib/dal";
 import { bool, int, str } from "@/lib/form-data";
+import { revalidateWebsite } from "@/lib/revalidate-website";
 import type { ActionResult } from "@/lib/undo-types";
 
 export type FormState = ActionResult;
@@ -29,8 +30,9 @@ function parsePackage(fd: FormData) {
   };
 }
 
-function revalidate() {
+async function revalidate() {
   revalidatePath("/sponsors/packages");
+  await revalidateWebsite("packages");
 }
 
 export async function createPackage(_prev: FormState, fd: FormData): Promise<FormState> {
@@ -38,7 +40,7 @@ export async function createPackage(_prev: FormState, fd: FormData): Promise<For
   const values = parsePackage(fd);
   if (!values.name) return { error: "Name is required." };
   await db.insert(sponsorPackages).values(values);
-  revalidate();
+  await revalidate();
   return { ok: true, message: "Package created." };
 }
 
@@ -54,13 +56,13 @@ export async function updatePackage(
     .update(sponsorPackages)
     .set({ ...values, updatedAt: new Date().toISOString() })
     .where(eq(sponsorPackages.id, id));
-  revalidate();
+  await revalidate();
   return { ok: true, message: "Package updated." };
 }
 
 export async function deletePackage(id: number): Promise<FormState> {
   await requireWrite("sponsors");
   await db.delete(sponsorPackages).where(eq(sponsorPackages.id, id));
-  revalidate();
+  await revalidate();
   return { ok: true, message: "Package deleted." };
 }

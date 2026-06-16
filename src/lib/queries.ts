@@ -156,11 +156,17 @@ export async function getEventOptions(): Promise<{ id: number; name: string }[]>
 
 // --- People section ---
 
-export async function getAllPeople(): Promise<PersonRow[]> {
+/** Roster for the People page. `admin_only` people are hidden from non-admins;
+ * pass `includeHidden` (admins) to see them too. */
+export async function getAllPeople(
+  opts: { includeHidden?: boolean } = {},
+): Promise<PersonRow[]> {
+  const conds = [eq(people.archived, false)];
+  if (!opts.includeHidden) conds.push(eq(people.adminOnly, false));
   return db
     .select()
     .from(people)
-    .where(eq(people.archived, false))
+    .where(and(...conds))
     .orderBy(asc(people.committee), asc(people.name));
 }
 

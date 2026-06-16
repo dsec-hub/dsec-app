@@ -18,7 +18,7 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/format";
 
-export type EntityType = "event" | "project" | "sponsor" | "speaker" | "person";
+export type EntityType = "event" | "project" | "sponsor" | "speaker" | "person" | "partner";
 
 export type MediaItem = {
   id: number;
@@ -47,6 +47,9 @@ const ROLES_BY_ENTITY: Record<EntityType, RoleDef[]> = {
   sponsor: [
     { value: "logo", label: "Logo", aspect: undefined, hint: "Brand logo — transparent PNG works best; crop freely" },
   ],
+  partner: [
+    { value: "logo", label: "Logo", aspect: undefined, hint: "Brand logo — transparent PNG works best; crop freely" },
+  ],
   speaker: [
     { value: "photo", label: "Photo", aspect: 1, hint: "Headshot — square 1:1" },
   ],
@@ -60,6 +63,7 @@ const SECTION_COPY: Record<EntityType, { title: string; add: string; empty: stri
   event: { title: "Images", add: "Add image", empty: "No images yet. Upload a banner, poster, or image — they show on the public site." },
   project: { title: "Images", add: "Add image", empty: "No images yet. Upload a banner, poster, or image — they show on the public site." },
   sponsor: { title: "Logo", add: "Add logo", empty: "No logo yet. Upload the sponsor's brand logo — it shows on the public site." },
+  partner: { title: "Logo", add: "Add logo", empty: "No logo yet. Upload the partner's brand logo — it shows on the events they collaborate on." },
   speaker: { title: "Photo", add: "Add photo", empty: "No photo yet. Upload a headshot — it shows on the public site." },
   person: { title: "Profile photo", add: "Add photo", empty: "No profile photo yet. Upload a headshot — it shows on the public team page (and as the lead avatar on events/projects they run)." },
 };
@@ -79,6 +83,32 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error("could not load image"));
     img.src = src;
   });
+}
+
+// iPhones shoot HEIC/HEIF by default, which Chrome & Firefox can't decode in an
+// <img> or <canvas> — so both the crop preview and our canvas compression fail
+// on them. Convert HEIC → JPEG up front and the rest of the pipeline treats it
+// like any other photo. The decoder (heic2any wraps libheif, ~1.5 MB) is loaded
+// lazily, so it costs nothing on the bundle unless an Apple photo is picked.
+const HEIC_EXT = /\.(heic|heif)$/i;
+
+function isHeic(file: File): boolean {
+  // Browsers often report an empty or octet-stream type for HEIC, so fall back
+  // to the extension. Matches image/heic, image/heif and their -sequence forms.
+  return /^image\/hei[cf]/i.test(file.type) || HEIC_EXT.test(file.name);
+}
+
+async function heicToJpeg(file: File): Promise<File> {
+  const { default: heic2any } = await import("heic2any");
+  const out = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
+  const blob = Array.isArray(out) ? out[0] : out;
+  const base = file.name.replace(HEIC_EXT, "") || "image";
+  return new File([blob], `${base}.jpg`, { type: "image/jpeg" });
+}
+
+/** Convert any HEIC/HEIF picks to JPEG; pass everything else through untouched. */
+function toDisplayable(files: File[]): Promise<File[]> {
+  return Promise.all(files.map((f) => (isHeic(f) ? heicToJpeg(f) : Promise.resolve(f))));
 }
 
 // Cap the exported longest side so uploads stay small. Mirrors the server's
@@ -199,11 +229,16 @@ export function MediaManager({
   entityId,
   existing,
   canWrite = true,
+  emptyOverride,
 }: {
   entityType: EntityType;
   entityId: number;
   existing: MediaItem[];
   canWrite?: boolean;
+  // Replaces the default "No … yet" empty-state copy — used when a linked
+  // speaker is showing an inherited profile photo, so uploading here reads as
+  // an *override* rather than implying nothing is set.
+  emptyOverride?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const copy = SECTION_COPY[entityType];
@@ -220,7 +255,9 @@ export function MediaManager({
       }
     >
       {existing.length === 0 ? (
-        <EmptyState>{canWrite ? copy.empty : `No ${copy.title.toLowerCase()} yet.`}</EmptyState>
+        <EmptyState>
+          {emptyOverride ?? (canWrite ? copy.empty : `No ${copy.title.toLowerCase()} yet.`)}
+        </EmptyState>
       ) : (
         <div className="grid grid-cols-2 gap-4 px-5 pt-5 pb-4 sm:grid-cols-3">
           {existing.map((m) => (
@@ -341,6 +378,7 @@ function Uploader({
   const [state, setState] = useState<MediaState>();
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [statuses, setStatuses] = useState<("ok" | "err")[]>([]);
+  const [converting, setConverting] = useState(false);
   const [pending, start] = useTransition();
 
   const bulk = files.length > 1;
@@ -349,6 +387,11 @@ function Uploader({
   useEffect(() => {
     return () => previews.forEach((u) => URL.revokeObjectURL(u));
   }, [previews]);
+
+  const warn = (msg: string) => {
+    setState({ error: msg });
+    toast.error(msg);
+  };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
@@ -359,8 +402,25 @@ function Uploader({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setArea(null);
-    setFiles(picked);
-    setPreviews(picked.map((f) => URL.createObjectURL(f)));
+    setFiles([]);
+    setPreviews([]);
+
+    if (!picked.some(isHeic)) {
+      setFiles(picked);
+      setPreviews(picked.map((f) => URL.createObjectURL(f)));
+      return;
+    }
+    // At least one Apple photo — decode HEIC → JPEG before previewing/cropping.
+    setConverting(true);
+    void toDisplayable(picked)
+      .then((ready) => {
+        setFiles(ready);
+        setPreviews(ready.map((f) => URL.createObjectURL(f)));
+      })
+      .catch((err: unknown) =>
+        warn(`Couldn't read that HEIC photo — ${(err as Error).message}`),
+      )
+      .finally(() => setConverting(false));
   };
 
   const onCropComplete = useCallback((_a: Area, pixels: Area) => setArea(pixels), []);
@@ -373,11 +433,6 @@ function Uploader({
     if (altText?.trim()) fd.set("alt_text", altText.trim());
     fd.set("file", blob, name);
     return uploadMedia(undefined, fd);
-  };
-
-  const warn = (msg: string) => {
-    setState({ error: msg });
-    toast.error(msg);
   };
 
   const onUpload = () => {
@@ -470,16 +525,23 @@ function Uploader({
 
       <Field
         label="Image file"
-        hint="JPEG, PNG, or WebP. Pick several to upload in bulk — each is resized & compressed automatically."
+        hint="JPEG, PNG, WebP, or HEIC. Pick several to upload in bulk — each is resized & compressed automatically."
       >
         <input
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           multiple
           onChange={onPick}
           className="block w-full text-sm text-muted file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-accent-foreground hover:file:opacity-90"
         />
       </Field>
+
+      {converting && (
+        <p className="flex items-center gap-2 text-xs text-muted">
+          <Spinner className="size-3" />
+          Converting HEIC photo…
+        </p>
+      )}
 
       {/* Single image → interactive crop. */}
       {!bulk && previews[0] && (

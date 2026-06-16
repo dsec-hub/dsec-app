@@ -20,6 +20,7 @@ export function PersonForm({
   person,
   committees,
   canWrite = true,
+  isAdmin = false,
   onSuccess,
   onCancel,
   redirectOnSuccess,
@@ -28,6 +29,8 @@ export function PersonForm({
   person?: PersonRow;
   committees: { id: number; name: string }[];
   canWrite?: boolean;
+  /** Only admins may toggle internal (admin-only) visibility. */
+  isAdmin?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
   redirectOnSuccess?: string;
@@ -144,6 +147,21 @@ export function PersonForm({
         <Field label="Notes" hint="Internal — never shown on the public site.">
           <TextArea name="notes" defaultValue={p?.notes ?? ""} />
         </Field>
+
+        {/* Admin-only: hide this person from non-admin committee members. */}
+        {isAdmin && (
+          <div className="space-y-1 border-t border-border pt-6">
+            <CheckboxField
+              label="Hidden from non-admins"
+              name="admin_only"
+              defaultChecked={p?.adminOnly ?? false}
+            />
+            <p className="pl-[26px] text-xs text-muted">
+              Only admins will see this person on the People page. Use for sensitive
+              contacts the wider committee shouldn’t see.
+            </p>
+          </div>
+        )}
       </fieldset>
 
       <div className="flex items-center gap-3">

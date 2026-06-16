@@ -6,14 +6,22 @@ import { getCommittees } from "@/lib/committee-queries";
 import { requireModule } from "@/lib/dal";
 import { personStatusVariant } from "@/lib/options";
 import { getAllPeople, type PersonRow } from "@/lib/queries";
-import { canWrite } from "@/lib/rbac";
+import { canWrite, isAdmin } from "@/lib/rbac";
 
 import { NewPersonButton } from "./new-person-button";
+
+// External contacts (mentors, speakers, sponsor reps…) get their own section
+// instead of mixing into committee groups.
+const EXTERNAL_GROUP = "External Contacts";
 
 export default async function PeoplePage() {
   const me = await requireModule("people");
   const writable = canWrite(me.modules, me.writeModules, "people");
-  const [people, committees] = await Promise.all([getAllPeople(), getCommittees()]);
+  const admin = isAdmin(me.modules);
+  const [people, committees] = await Promise.all([
+    getAllPeople({ includeHidden: admin }),
+    getCommittees(),
+  ]);
 
   // Committee metadata (colour, lead) + display order, keyed by name.
   const meta = new Map(committees.map((c) => [c.name, c]));
@@ -21,16 +29,22 @@ export default async function PeoplePage() {
 
   const groups = new Map<string, PersonRow[]>();
   for (const p of people) {
-    const key = p.committee ?? "Unassigned";
+    const key =
+      p.type === "External Contact" ? EXTERNAL_GROUP : p.committee ?? "Unassigned";
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(p);
   }
 
   // Known committees first (configured order), then any legacy names, with
-  // "Unassigned" always last.
+  // "Unassigned" then "External Contacts" always last.
+  const rank = (name: string) => {
+    if (name === EXTERNAL_GROUP) return Number.MAX_SAFE_INTEGER;
+    if (name === "Unassigned") return Number.MAX_SAFE_INTEGER - 1;
+    return order.get(name) ?? Number.MAX_SAFE_INTEGER - 2;
+  };
   const sortedGroups = [...groups.entries()].sort(([a], [b]) => {
-    const ra = a === "Unassigned" ? Infinity : order.get(a) ?? Number.MAX_SAFE_INTEGER;
-    const rb = b === "Unassigned" ? Infinity : order.get(b) ?? Number.MAX_SAFE_INTEGER;
+    const ra = rank(a);
+    const rb = rank(b);
     return ra !== rb ? ra - rb : a.localeCompare(b);
   });
 
@@ -45,7 +59,7 @@ export default async function PeoplePage() {
         title="People"
         description="Committee roster and contacts."
         breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "People" }]}
-        action={writable && <NewPersonButton committees={committeeOptions} />}
+        action={writable && <NewPersonButton committees={committeeOptions} isAdmin={admin} />}
       />
 
       {people.length === 0 ? (
@@ -85,6 +99,7 @@ export default async function PeoplePage() {
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
+                          {p.adminOnly && <Badge variant="warning">Hidden</Badge>}
                           <Badge variant="neutral">{p.type ?? "—"}</Badge>
                           <Badge variant={personStatusVariant(p.status)}>
                             {p.status ?? "—"}

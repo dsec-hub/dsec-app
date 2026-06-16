@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Markdown } from "@/components/markdown";
+import { PublishToggle } from "@/components/publish-toggle";
 import { RelatedTasks } from "@/components/related-tasks";
 import { Badge, Card, PageHeader, SectionCard, buttonSecondary } from "@/components/ui";
 import { requireUser } from "@/lib/dal";
@@ -10,6 +11,8 @@ import { getEventById } from "@/lib/queries";
 import { requireProjectView } from "@/lib/scope";
 import { projectStatusVariant } from "@/lib/workspace-options";
 import { getPersonOptions, getProjectById, getRelatedTasks } from "@/lib/workspace-queries";
+
+import { setProjectPublished } from "../actions";
 
 export default async function ProjectDetailPage({
   params,
@@ -45,16 +48,24 @@ export default async function ProjectDetailPage({
         ]}
         action={
           writable && (
-            <Link href={`/projects/${project.id}/edit`} className={buttonSecondary}>
-              Edit
-            </Link>
+            <div className="flex items-center gap-2">
+              <PublishToggle
+                published={project.isPublic}
+                action={setProjectPublished.bind(null, project.id)}
+              />
+              <Link href={`/projects/${project.id}/edit`} className={buttonSecondary}>
+                Edit
+              </Link>
+            </div>
           )
         }
       />
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
+        <Badge variant={project.isPublic ? "success" : "warning"}>
+          {project.isPublic ? "Published" : "Draft"}
+        </Badge>
         <Badge variant={projectStatusVariant(project.status)}>{project.status ?? "—"}</Badge>
-        {project.isPublic && <Badge variant="accent">Public</Badge>}
         {project.featured && <span className="text-sm text-accent-text">★ Featured</span>}
         {project.category && <Badge variant="neutral">{project.category}</Badge>}
       </div>

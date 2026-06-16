@@ -34,6 +34,7 @@ const NAV: NavSection[] = [
     items: [
       { href: "/members", label: "Members", icon: "members", module: "members" },
       { href: "/people", label: "People", icon: "people", module: "people" },
+      { href: "/partners", label: "Partners", icon: "partners", module: "partners" },
     ],
   },
   {

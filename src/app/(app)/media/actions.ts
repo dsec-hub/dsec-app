@@ -4,22 +4,28 @@ import { revalidatePath } from "next/cache";
 
 import { apiEnv } from "@/lib/api-env";
 import { requireWrite } from "@/lib/dal";
+import { revalidateWebsite } from "@/lib/revalidate-website";
 import { logMutation } from "@/lib/usage";
+import { getMedia } from "@/lib/workspace-queries";
 
 export type MediaState = { error?: string; ok?: string } | undefined;
 
-type EntityType = "event" | "project" | "sponsor" | "speaker" | "person";
+type EntityType = "event" | "project" | "sponsor" | "speaker" | "person" | "partner";
 
-// Maps an upload target to the dashboard module (for write-permission checks)
-// and the route base to revalidate. Sponsor logos live under /sponsors; speaker
-// photos are managed on the event edit page, so they use the events module;
-// person profile photos are managed on the people edit page.
+// Maps an upload target to the dashboard module (for write-permission checks),
+// the route base to revalidate, and the public-website feed tag to invalidate.
+// Sponsor logos live under /sponsors; speaker photos are managed on the event
+// edit page (so they use the events module and the "events" feed); person
+// profile photos are managed on the people edit page (the "team" feed).
 const SECTION = {
-  event: { module: "events", base: "/events" },
-  project: { module: "projects", base: "/projects" },
-  sponsor: { module: "sponsors", base: "/sponsors" },
-  speaker: { module: "events", base: "/events" },
-  person: { module: "people", base: "/people" },
+  event: { module: "events", base: "/events", tag: "events" },
+  project: { module: "projects", base: "/projects", tag: "projects" },
+  sponsor: { module: "sponsors", base: "/sponsors", tag: "sponsors" },
+  // Partners are internal-only — "partners" isn't a real website feed tag, so
+  // the revalidate ping is a harmless best-effort no-op.
+  partner: { module: "partners", base: "/partners", tag: "partners" },
+  speaker: { module: "events", base: "/events", tag: "events" },
+  person: { module: "people", base: "/people", tag: "team" },
 } as const;
 
 /**
@@ -31,24 +37,19 @@ const SECTION = {
  * could delete another module's media by passing a mismatched entityType + the
  * other module's id. Listing the claimed entity's media and checking membership
  * re-binds the id to the entity, so requireWrite(entityType's module) is sound.
+ *
+ * Checked straight against Neon (the same source the edit page lists from) — not
+ * the API's GET /media, which needs the `read` scope. The dashboard's API key is
+ * only ever provisioned for `write` (upload + delete), so an API read here would
+ * 403 and make every delete fail with "doesn't belong to this item".
  */
 async function mediaBelongsTo(
-  env: { base: string; key: string },
   entityType: EntityType,
   entityId: number,
   id: number,
 ): Promise<boolean> {
-  try {
-    const res = await fetch(
-      `${env.base}/media?entity_type=${encodeURIComponent(entityType)}&entity_id=${entityId}`,
-      { headers: { Authorization: `Bearer ${env.key}` }, cache: "no-store" },
-    );
-    if (!res.ok) return false;
-    const items = (await res.json()) as Array<{ id: number }>;
-    return items.some((m) => m.id === id);
-  } catch {
-    return false;
-  }
+  const items = await getMedia(entityType, entityId);
+  return items.some((m) => m.id === id);
 }
 
 /**
@@ -102,6 +103,7 @@ export async function uploadMedia(
     await logMutation(user, "create", `${entityType}-media`, entityId);
     revalidatePath(`${section.base}/${entityId}/edit`);
     revalidatePath(section.base);
+    await revalidateWebsite(section.tag);
     return { ok: "Image uploaded." };
   } catch (e) {
     return { error: `Could not reach the API: ${(e as Error).message}` };
@@ -121,13 +123,13 @@ export async function deleteMedia(
   const env = apiEnv();
   if (!env) return { error: "Image management needs DSEC_API_URL + DSEC_API_KEY." };
 
-  // Object-level auth: ensure the asset really belongs to the claimed entity
-  // before deleting (requireWrite only gated the claimed entityType's module).
-  if (!(await mediaBelongsTo(env, entityType, entityId, id))) {
-    return { error: "That image doesn't belong to this item." };
-  }
-
   try {
+    // Object-level auth: ensure the asset really belongs to the claimed entity
+    // before deleting (requireWrite only gated the claimed entityType's module).
+    if (!(await mediaBelongsTo(entityType, entityId, id))) {
+      return { error: "That image doesn't belong to this item." };
+    }
+
     const res = await fetch(`${env.base}/media/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${env.key}` },
@@ -139,6 +141,7 @@ export async function deleteMedia(
     await logMutation(user, "delete", `${entityType}-media`, id);
     revalidatePath(`${section.base}/${entityId}/edit`);
     revalidatePath(section.base);
+    await revalidateWebsite(section.tag);
     return { ok: "Image removed." };
   } catch (e) {
     return { error: `Could not reach the API: ${(e as Error).message}` };

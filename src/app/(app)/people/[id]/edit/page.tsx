@@ -7,7 +7,7 @@ import { getCommitteeOptions } from "@/lib/committee-queries";
 import { requireModule } from "@/lib/dal";
 import { cn } from "@/lib/format";
 import { getPersonById } from "@/lib/queries";
-import { canWrite } from "@/lib/rbac";
+import { canWrite, isAdmin } from "@/lib/rbac";
 import { getMedia, getMemberByStudentId } from "@/lib/workspace-queries";
 
 import { archivePerson, deletePerson, updatePerson } from "../../actions";
@@ -26,6 +26,8 @@ export default async function EditPersonPage({
 
   const person = await getPersonById(personId);
   if (!person) notFound();
+  // Non-admins can't reach a hidden person's edit page even by guessing the id.
+  if (person.adminOnly && !isAdmin(me.modules)) notFound();
 
   const [member, committees, photos] = await Promise.all([
     getMemberByStudentId(person.studentId),
@@ -77,7 +79,7 @@ export default async function EditPersonPage({
           </SectionCard>
         </div>
       ) : null}
-      <PersonForm action={updatePerson.bind(null, personId)} person={person} committees={committees} canWrite={writable} redirectOnSuccess="/people" />
+      <PersonForm action={updatePerson.bind(null, personId)} person={person} committees={committees} canWrite={writable} isAdmin={isAdmin(me.modules)} redirectOnSuccess="/people" />
       <div className="mt-6">
         <MediaManager
           entityType="person"

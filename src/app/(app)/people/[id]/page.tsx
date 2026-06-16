@@ -7,7 +7,7 @@ import { getCommitteeOptions } from "@/lib/committee-queries";
 import { requireModule } from "@/lib/dal";
 import { personStatusVariant } from "@/lib/options";
 import { getPersonById } from "@/lib/queries";
-import { canWrite } from "@/lib/rbac";
+import { canWrite, isAdmin } from "@/lib/rbac";
 import { getMedia, getMemberByStudentId } from "@/lib/workspace-queries";
 
 /** Prefix a bare domain with https:// so user-entered URLs always link out. */
@@ -33,6 +33,8 @@ export default async function PersonDetailPage({
 
   const person = await getPersonById(personId);
   if (!person) notFound();
+  // Non-admins can't reach a hidden person's page even by guessing the id.
+  if (person.adminOnly && !isAdmin(me.modules)) notFound();
 
   const [member, committees, photos] = await Promise.all([
     getMemberByStudentId(person.studentId),
@@ -94,6 +96,7 @@ export default async function PersonDetailPage({
         <div className="flex flex-wrap items-center gap-2">
           {person.type && <Badge variant="neutral">{person.type}</Badge>}
           <Badge variant={personStatusVariant(person.status)}>{person.status ?? "—"}</Badge>
+          {person.adminOnly && <Badge variant="warning">Hidden from non-admins</Badge>}
           {person.showOnWebsite && <Badge variant="success">On website</Badge>}
           {person.committee && (
             <span className="flex items-center gap-1.5 text-sm text-muted">

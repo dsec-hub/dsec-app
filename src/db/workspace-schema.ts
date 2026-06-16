@@ -40,6 +40,8 @@ export const people = pgTable("people", {
   bio: text(),
   showOnWebsite: boolean("show_on_website").default(false).notNull(),
   displayOrder: integer("display_order").default(0).notNull(),
+  // Admin-only internal visibility (see schema.ts people.adminOnly).
+  adminOnly: boolean("admin_only").default(false).notNull(),
   archived: boolean().default(false).notNull(),
 });
 
@@ -62,9 +64,17 @@ export const events = pgTable("events", {
   dusaDeadline: date("dusa_deadline"),
   expectedAttendance: integer("expected_attendance"),
   actualAttendance: integer("actual_attendance"),
-  notes: text(),
+  // Explicit name required: `events` is also defined in schema.ts (which has
+  // `description` instead of `notes`). drizzle's CasingCache is shared per
+  // physical table name across the one db instance, so a no-name (keyAsName)
+  // column unique to one definition resolves to `undefined` when the other
+  // definition was queried first → escapeName(undefined) crash. See schema.ts.
+  notes: text("notes"),
   budgetAud: numeric("budget_aud", { precision: 12, scale: 2 }),
   grantAud: numeric("grant_aud", { precision: 12, scale: 2 }),
+  // Draft (false) vs published (true) — mirrors schema.ts events / projects.
+  // Hidden from the public website until published. See schema.ts for the why.
+  isPublic: boolean("is_public").default(false).notNull(),
   createdAt: ts("created_at").defaultNow().notNull(),
   updatedAt: ts("updated_at").defaultNow().notNull(),
   archived: boolean().default(false).notNull(),
@@ -82,7 +92,11 @@ export const sponsors = pgTable("sponsors", {
   dusaApproved: boolean("dusa_approved").default(false).notNull(),
   showOnWebsite: boolean("show_on_website").default(false).notNull(),
   contactEmail: varchar("contact_email", { length: 256 }),
-  website: varchar({ length: 256 }),
+  // Explicit name required: `sponsors` is also defined in schema.ts without this
+  // no-name column, so the shared CasingCache (keyed per physical table name)
+  // resolves it to `undefined` when the other definition was queried first →
+  // escapeName(undefined) crash. See schema.ts events.description for the why.
+  website: varchar("website", { length: 256 }),
   nextAction: varchar("next_action", { length: 512 }),
   nextActionDate: date("next_action_date"),
   lastContactDate: date("last_contact_date"),
@@ -233,6 +247,42 @@ export const eventSponsors = pgTable("event_sponsor", {
   eventId: integer("event_id").notNull(),
   sponsorId: integer("sponsor_id").notNull(),
   tier: varchar({ length: 64 }),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: ts("created_at").defaultNow().notNull(),
+  updatedAt: ts("updated_at").defaultNow().notNull(),
+  archived: boolean().default(false).notNull(),
+});
+
+// --- partners --------------------------------------------------------------
+// A collaborator club / society / external org that co-hosts events. Unlike
+// `sponsors` this carries NO pipeline (no stage/value/packages) — just a name,
+// website, notes, and an uploadable logo (media_asset entityType="partner",
+// role="logo"). Internal-only: shown on the dashboard + linked events, not on
+// the public website. Defined ONLY here (a fresh table) so it avoids the
+// schema.ts/workspace-schema.ts double-definition trap that sponsors hit.
+
+export const partners = pgTable("partner", {
+  id: serial().primaryKey(),
+  name: varchar({ length: 256 }).notNull(),
+  website: varchar({ length: 256 }),
+  notes: text(),
+  // Publish this partner's logo on the public events it's linked to (off by
+  // default — partners are internal until an exec opts one in).
+  showOnWebsite: boolean("show_on_website").default(false).notNull(),
+  createdAt: ts("created_at").defaultNow().notNull(),
+  updatedAt: ts("updated_at").defaultNow().notNull(),
+  archived: boolean().default(false).notNull(),
+});
+
+// --- event partners --------------------------------------------------------
+// Many-to-many event<->partner so an event can list the clubs it is run in
+// collaboration with. The logo lives on the partner (reused across events).
+
+export const eventPartners = pgTable("event_partner", {
+  id: serial().primaryKey(),
+  eventId: integer("event_id").notNull(),
+  partnerId: integer("partner_id").notNull(),
+  role: varchar({ length: 64 }), // optional per-event label, e.g. "Co-host"
   sortOrder: integer("sort_order").default(0).notNull(),
   createdAt: ts("created_at").defaultNow().notNull(),
   updatedAt: ts("updated_at").defaultNow().notNull(),

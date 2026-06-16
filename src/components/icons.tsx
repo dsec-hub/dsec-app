@@ -45,6 +45,12 @@ export const Icons = {
       <path d="M12 2v20M17 6.5C17 4.6 14.8 3.5 12 3.5S7 4.6 7 6.5 9 9.5 12 10s5 1.3 5 3.5-2.2 3.5-5 3.5-5-1.1-5-3" />
     </svg>
   ),
+  partners: (p: IconProps) => (
+    <svg {...base} className={p.className} aria-hidden>
+      <circle cx="8.5" cy="12" r="6" />
+      <circle cx="15.5" cy="12" r="6" />
+    </svg>
+  ),
   admin: (p: IconProps) => (
     <svg {...base} className={p.className} aria-hidden>
       <path d="M12 3l7 3v5c0 4.4-3 8.3-7 9.5C8 19.3 5 15.4 5 11V6z" />

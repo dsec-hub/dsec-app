@@ -212,6 +212,7 @@ function EventRow({ e, className }: { e: EventWithLead; className?: string }) {
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        {!e.isPublic && <Badge variant="warning">Draft</Badge>}
         {e.status !== "Completed" && (
           <Badge variant={dusaVariant(e.dusaSubmissionStatus)}>{e.dusaSubmissionStatus ?? "—"}</Badge>
         )}

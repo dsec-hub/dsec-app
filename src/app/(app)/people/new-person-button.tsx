@@ -10,8 +10,10 @@ import { PersonForm } from "./person-form";
 
 export function NewPersonButton({
   committees,
+  isAdmin = false,
 }: {
   committees: { id: number; name: string }[];
+  isAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -23,6 +25,7 @@ export function NewPersonButton({
         <PersonForm
           action={createPerson}
           committees={committees}
+          isAdmin={isAdmin}
           onSuccess={() => setOpen(false)}
           onCancel={() => setOpen(false)}
         />

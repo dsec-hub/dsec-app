@@ -6,7 +6,15 @@ import type { PgTable } from "drizzle-orm/pg-core";
 
 import { db } from "@/db";
 import { appRole, appSetting, appUser, committee, events, finance, people, sponsors } from "@/db/schema";
-import { eventSpeakers, eventSponsors, projects, taskBoards, tasks } from "@/db/workspace-schema";
+import {
+  eventPartners,
+  eventSpeakers,
+  eventSponsors,
+  partners,
+  projects,
+  taskBoards,
+  tasks,
+} from "@/db/workspace-schema";
 import type { ModuleKey } from "@/lib/rbac";
 import { signToken } from "@/lib/undo-sign";
 import type { UndoKey, UndoToken } from "@/lib/undo-types";
@@ -27,9 +35,11 @@ export const REGISTRY: Record<UndoKey, Reg> = {
   event: { table: events, module: "events", label: "Event", paths: ["/events", "/events/dusa", "/dashboard", "/"] },
   event_speaker: { table: eventSpeakers, module: "events", label: "Speaker", paths: ["/events"] },
   event_sponsor: { table: eventSponsors, module: "events", label: "Event sponsor", paths: ["/events"] },
+  event_partner: { table: eventPartners, module: "events", label: "Event partner", paths: ["/events"] },
   finance: { table: finance, module: "finance", label: "Finance entry", paths: ["/finance", "/dashboard", "/"] },
   person: { table: people, module: "people", label: "Person", paths: ["/people", "/dashboard", "/"] },
   sponsor: { table: sponsors, module: "sponsors", label: "Sponsor", paths: ["/sponsors", "/dashboard", "/"] },
+  partner: { table: partners, module: "partners", label: "Partner", paths: ["/partners", "/dashboard", "/"] },
   project: { table: projects, module: "projects", label: "Project", paths: ["/projects", "/dashboard", "/"] },
   task: { table: tasks, module: "tasks", label: "Task", paths: ["/tasks", "/dashboard", "/"] },
   board: { table: taskBoards, module: "tasks", label: "Board", paths: ["/tasks", "/dashboard", "/"] },

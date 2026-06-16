@@ -40,6 +40,30 @@ The pure decisions live in `lib/rbac.ts` (`isOwner`, `scopeFor`, unit-tested in
 `lib/scope.ts`. The shape generalises to `events.event_lead_id` /
 `tasks.assignee_id` — add a `<module>Scope` + `requireXView` pair per module.
 
+## Self-service API / MCP tokens
+
+Any user whose role permits it can mint their own `dsec_live_…` API key from
+**Settings → API & MCP** (`lib/api-tokens.ts`) to connect the workspace to an MCP
+client (Claude/ChatGPT). API-key scopes are **coarse and global** (`read` /
+`write` / `trigger` / `ingest`) — they are *not* per-module, so a `write` token
+can write every module via MCP. The UI states this; what a user may mint is
+bounded by their role:
+
+| scope     | a user may mint it when…                    |
+| --------- | ------------------------------------------- |
+| `read`    | they can **view** any module                |
+| `write`   | they can **edit** any module                |
+| `trigger` | they can **edit Meetings** (AI notes)       |
+| `ingest`  | they are an **admin**                       |
+
+Minting is proxied to dsec-api (`POST /admin/keys/self`), which owns key
+generation + argon2 hashing and re-checks `requested ⊆ the service key's scopes`
+(so even a leaked service key can't mint something more powerful than itself).
+Tokens are owned via `api_key.created_by = "appuser:<id>"`; listing/revoking
+read/write that table directly (ownership-checked). Note: `trigger`/`ingest`
+tokens require the production `DSEC_API_KEY` service key to itself hold those
+scopes.
+
 ## Enforcement (defense in depth)
 
 1. **Proxy** (`proxy.ts` → `auth.config.ts`) — coarse route gate from the JWT

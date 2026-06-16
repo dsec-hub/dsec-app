@@ -9,10 +9,17 @@ import { cn } from "@/lib/format";
 import { getEventById, getPeopleOptions, getSponsorOptions } from "@/lib/queries";
 import { canWrite } from "@/lib/rbac";
 import { fetchReviewSummary } from "@/lib/reviews";
-import { getEventSpeakers, getEventSponsors, getMedia } from "@/lib/workspace-queries";
+import {
+  getEventPartners,
+  getEventSpeakers,
+  getEventSponsors,
+  getMedia,
+  getPartnerOptions,
+} from "@/lib/workspace-queries";
 
 import { archiveEvent, deleteEvent, updateEvent } from "../../actions";
 import { EventForm } from "../../event-form";
+import { EventPartners } from "../event-partners";
 import { EventSpeakers } from "../event-speakers";
 import { EventSponsors } from "../event-sponsors";
 import { ReviewPanel } from "../../review-panel";
@@ -28,16 +35,27 @@ export default async function EditEventPage({
   const eventId = Number(id);
   if (Number.isNaN(eventId)) notFound();
 
-  const [event, people, sponsors, committees, media, speakers, eventSponsors] =
-    await Promise.all([
-      getEventById(eventId),
-      getPeopleOptions(),
-      getSponsorOptions(),
-      getCommitteeOptions(),
-      getMedia("event", eventId),
-      getEventSpeakers(eventId).catch(() => []),
-      getEventSponsors(eventId).catch(() => []),
-    ]);
+  const [
+    event,
+    people,
+    sponsors,
+    committees,
+    media,
+    speakers,
+    eventSponsors,
+    partnerOptions,
+    eventPartners,
+  ] = await Promise.all([
+    getEventById(eventId),
+    getPeopleOptions(),
+    getSponsorOptions(),
+    getCommitteeOptions(),
+    getMedia("event", eventId),
+    getEventSpeakers(eventId).catch(() => []),
+    getEventSponsors(eventId).catch(() => []),
+    getPartnerOptions(),
+    getEventPartners(eventId).catch(() => []),
+  ]);
   if (!event) notFound();
 
   // Best-effort live stats; only hit the API when a form actually exists.
@@ -105,6 +123,14 @@ export default async function EditEventPage({
           eventId={eventId}
           linked={eventSponsors}
           sponsorOptions={sponsors}
+          canWrite={writable}
+        />
+      </div>
+      <div className="mt-6">
+        <EventPartners
+          eventId={eventId}
+          linked={eventPartners}
+          partnerOptions={partnerOptions}
           canWrite={writable}
         />
       </div>

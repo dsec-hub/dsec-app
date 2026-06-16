@@ -95,8 +95,8 @@ export function ProjectForm({
         />
       </Field>
 
-      <Field label="Description">
-        <TextArea name="description" defaultValue={p?.description ?? ""} />
+      <Field label="Description" hint="Shown on the public website. Markdown supported.">
+        <TextArea name="description" rows={8} defaultValue={p?.description ?? ""} />
       </Field>
 
       <Field label="Tech tags" hint="Comma-separated, e.g. Next.js, Postgres, Drizzle">
@@ -133,7 +133,6 @@ export function ProjectForm({
       </div>
 
       <div className="flex flex-wrap gap-5">
-        <CheckboxField label="Public" name="is_public" defaultChecked={p?.isPublic ?? false} />
         <CheckboxField label="Featured" name="featured" defaultChecked={p?.featured ?? false} />
       </div>
 

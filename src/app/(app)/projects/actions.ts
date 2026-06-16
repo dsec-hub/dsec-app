@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { projects } from "@/db/workspace-schema";
 import { requireWrite } from "@/lib/dal";
 import { bool, int, str } from "@/lib/form-data";
+import { revalidateWebsite } from "@/lib/revalidate-website";
 import { logMutation } from "@/lib/usage";
 import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
@@ -45,16 +46,19 @@ function parseProject(fd: FormData) {
     repoUrl: str(fd, "repo_url"),
     demoUrl: str(fd, "demo_url"),
     imageUrl: str(fd, "image_url"),
-    isPublic: bool(fd, "is_public"),
+    // is_public is the draft/published flag — managed by setProjectPublished
+    // (the Publish button), not the edit form, so editing content never
+    // accidentally publishes or unpublishes a project.
     featured: bool(fd, "featured"),
     relatedEventId: int(fd, "related_event_id"),
     notes: str(fd, "notes"),
   };
 }
 
-function revalidateProjects() {
+async function revalidateProjects() {
   revalidatePath("/projects");
   revalidatePath("/dashboard");
+  await revalidateWebsite("projects");
 }
 
 export async function createProject(_prev: FormState, fd: FormData): Promise<FormState> {
@@ -67,7 +71,7 @@ export async function createProject(_prev: FormState, fd: FormData): Promise<For
     .values({ ...values, slug })
     .returning({ id: projects.id });
   await logMutation(user, "create", "project", row?.id);
-  revalidateProjects();
+  await revalidateProjects();
   return { ok: true, message: "Project created", undo: createToken("project", row?.id) };
 }
 
@@ -85,8 +89,34 @@ export async function updateProject(
     .set({ ...values, updatedAt: new Date().toISOString() })
     .where(eq(projects.id, id));
   await logMutation(user, "update", "project", id);
-  revalidateProjects();
+  await revalidateProjects();
   return { ok: true, message: "Project updated", undo };
+}
+
+/**
+ * Toggle a project between draft and published. Publishing (is_public=true)
+ * reveals it on the public website; a draft stays in the dashboard only.
+ * Reversible via undo.
+ */
+export async function setProjectPublished(id: number, published: boolean): Promise<FormState> {
+  const user = await requireWrite("projects");
+  if (published) {
+    const [p] = await db
+      .select({ name: projects.name })
+      .from(projects)
+      .where(eq(projects.id, id))
+      .limit(1);
+    if (!p) return { error: "Project not found." };
+    if (!p.name) return { error: "Add a name before publishing." };
+  }
+  const undo = await snapshotForUpdate("project", id);
+  await db
+    .update(projects)
+    .set({ isPublic: published, updatedAt: new Date().toISOString() })
+    .where(eq(projects.id, id));
+  await logMutation(user, "update", "project", id);
+  await revalidateProjects();
+  return { ok: true, message: published ? "Project published" : "Moved to draft", undo };
 }
 
 export async function archiveProject(id: number): Promise<FormState> {
@@ -96,7 +126,7 @@ export async function archiveProject(id: number): Promise<FormState> {
     .set({ archived: true, updatedAt: new Date().toISOString() })
     .where(eq(projects.id, id));
   await logMutation(user, "archive", "project", id);
-  revalidateProjects();
+  await revalidateProjects();
   return {
     ok: true,
     message: "Project archived",
@@ -109,6 +139,6 @@ export async function deleteProject(id: number): Promise<FormState> {
   const undo = await snapshotForDelete("project", id);
   await db.delete(projects).where(eq(projects.id, id));
   await logMutation(user, "delete", "project", id);
-  revalidateProjects();
+  await revalidateProjects();
   return { ok: true, message: "Project deleted", undo };
 }

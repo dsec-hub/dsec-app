@@ -9,6 +9,7 @@ import { sponsorContacts } from "@/db/workspace-schema";
 import { apiEnv } from "@/lib/api-env";
 import { requireWrite } from "@/lib/dal";
 import { bool, int, jsonList, num, str } from "@/lib/form-data";
+import { revalidateWebsite } from "@/lib/revalidate-website";
 import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
 import { logMutation } from "@/lib/usage";
@@ -30,9 +31,10 @@ function parseSponsor(fd: FormData) {
   };
 }
 
-function revalidateSponsors() {
+async function revalidateSponsors() {
   revalidatePath("/sponsors");
   revalidatePath("/");
+  await revalidateWebsite("sponsors");
 }
 
 export async function createSponsor(_prev: FormState, fd: FormData): Promise<FormState> {
@@ -40,7 +42,7 @@ export async function createSponsor(_prev: FormState, fd: FormData): Promise<For
   const values = parseSponsor(fd);
   if (!values.organisation) return { error: "Organisation is required." };
   const [row] = await db.insert(sponsors).values(values).returning({ id: sponsors.id });
-  revalidateSponsors();
+  await revalidateSponsors();
   return { ok: true, message: "Sponsor created", undo: createToken("sponsor", row?.id) };
 }
 
@@ -57,7 +59,7 @@ export async function updateSponsor(
     .update(sponsors)
     .set({ ...values, updatedAt: new Date().toISOString() })
     .where(eq(sponsors.id, id));
-  revalidateSponsors();
+  await revalidateSponsors();
   return { ok: true, message: "Sponsor updated", undo };
 }
 
@@ -67,7 +69,7 @@ export async function archiveSponsor(id: number): Promise<FormState> {
     .update(sponsors)
     .set({ archived: true, updatedAt: new Date().toISOString() })
     .where(eq(sponsors.id, id));
-  revalidateSponsors();
+  await revalidateSponsors();
   return {
     ok: true,
     message: "Sponsor archived",
@@ -79,7 +81,7 @@ export async function deleteSponsor(id: number): Promise<FormState> {
   await requireWrite("sponsors");
   const undo = await snapshotForDelete("sponsor", id);
   await db.delete(sponsors).where(eq(sponsors.id, id));
-  revalidateSponsors();
+  await revalidateSponsors();
   return { ok: true, message: "Sponsor deleted", undo };
 }
 

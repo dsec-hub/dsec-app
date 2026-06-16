@@ -4,17 +4,24 @@ import { notFound } from "next/navigation";
 import { CommitteeDot } from "@/components/committee-select";
 import { Markdown } from "@/components/markdown";
 import { MediaManager } from "@/components/media-manager";
+import { PublishToggle } from "@/components/publish-toggle";
 import { RelatedTasks } from "@/components/related-tasks";
 import { Badge, Card, PageHeader, SectionCard, buttonSecondary } from "@/components/ui";
 import { getCommitteeOptions } from "@/lib/committee-queries";
 import { requireModule } from "@/lib/dal";
-import { formatAUD, formatDate, formatTime } from "@/lib/format";
+import { formatAUD, formatDate, formatTime, initials, todayISO } from "@/lib/format";
 import { dusaVariant, eventStatusVariant } from "@/lib/options";
 import { getEventById, getPeopleOptions, getSponsorOptions } from "@/lib/queries";
 import { canWrite } from "@/lib/rbac";
 import { fetchReviewSummary } from "@/lib/reviews";
-import { getMedia, getRelatedTasks } from "@/lib/workspace-queries";
+import {
+  getEventPartners,
+  getEventSpeakers,
+  getMedia,
+  getRelatedTasks,
+} from "@/lib/workspace-queries";
 
+import { setEventPublished } from "../actions";
 import { ReviewPanel } from "../review-panel";
 
 export default async function EventDetailPage({
@@ -28,14 +35,17 @@ export default async function EventDetailPage({
   const eventId = Number(id);
   if (Number.isNaN(eventId)) notFound();
 
-  const [event, people, sponsors, committees, media, relatedTasks] = await Promise.all([
-    getEventById(eventId),
-    getPeopleOptions(),
-    getSponsorOptions(),
-    getCommitteeOptions(),
-    getMedia("event", eventId),
-    getRelatedTasks("event", eventId),
-  ]);
+  const [event, people, sponsors, committees, media, relatedTasks, speakers, partners] =
+    await Promise.all([
+      getEventById(eventId),
+      getPeopleOptions(),
+      getSponsorOptions(),
+      getCommitteeOptions(),
+      getMedia("event", eventId),
+      getRelatedTasks("event", eventId),
+      getEventSpeakers(eventId).catch(() => []),
+      getEventPartners(eventId).catch(() => []),
+    ]);
   if (!event) notFound();
 
   const reviewSummary = event.reviewFormId ? await fetchReviewSummary(eventId) : null;
@@ -62,7 +72,14 @@ export default async function EventDetailPage({
 
   const tiers = event.ticketTiers ?? [];
   const supportTypes = event.supportTypes ?? [];
-  const showDusa = event.dusaRequired || !!event.dusaSubmissionStatus || !!event.dusaDeadline;
+  // Completed events don't track DUSA (mirrors event-form.tsx). An event also
+  // auto-completes once its start date is past, unless manually Cancelled.
+  const isCompleted =
+    event.status === "Completed" ||
+    (!!event.startDate && event.startDate < todayISO() && event.status !== "Cancelled");
+  const showDusa =
+    !isCompleted &&
+    (event.dusaRequired || !!event.dusaSubmissionStatus || !!event.dusaDeadline);
   const showPartnership = !!sponsor || !!event.partnerOrg || supportTypes.length > 0;
   const showTickets = !!event.ticketUrl || tiers.length > 0;
 
@@ -78,14 +95,24 @@ export default async function EventDetailPage({
         ]}
         action={
           writable ? (
-            <Link href={`/events/${eventId}/edit`} className={buttonSecondary}>
-              Edit
-            </Link>
+            <div className="flex items-center gap-2">
+              <PublishToggle
+                published={event.isPublic}
+                action={setEventPublished.bind(null, eventId)}
+                blockedReason={event.startDate ? undefined : "Add a start date before publishing"}
+              />
+              <Link href={`/events/${eventId}/edit`} className={buttonSecondary}>
+                Edit
+              </Link>
+            </div>
           ) : undefined
         }
       />
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
+        <Badge variant={event.isPublic ? "success" : "warning"}>
+          {event.isPublic ? "Published" : "Draft"}
+        </Badge>
         <Badge variant={eventStatusVariant(event.status)}>{event.status ?? "—"}</Badge>
         {event.foodProvided && <Badge variant="success">Food provided</Badge>}
         {event.externalGuests && <Badge variant="neutral">External guests</Badge>}
@@ -194,6 +221,84 @@ export default async function EventDetailPage({
           <div className="p-5">
             <Markdown content={event.description} />
           </div>
+        </SectionCard>
+      )}
+
+      {speakers.length > 0 && (
+        <SectionCard title={`Speakers · ${speakers.length}`} className="mb-6">
+          <ul className="divide-y divide-border">
+            {speakers.map((sp) => {
+              const photo = sp.photos[0]?.webpUrl ?? sp.inheritedPhoto;
+              return (
+                <li key={sp.id} className="flex items-start gap-3 px-5 py-4">
+                  {photo ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={photo}
+                      alt=""
+                      className="size-10 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="grid size-10 shrink-0 place-items-center rounded-full bg-elevated text-xs font-medium text-muted">
+                      {initials(sp.displayName)}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium">{sp.displayName}</span>
+                      {sp.personId && <Badge variant="neutral">Linked</Badge>}
+                    </div>
+                    {sp.title && <div className="text-xs text-muted">{sp.title}</div>}
+                    {sp.bio && <p className="mt-1 text-xs text-muted/80">{sp.bio}</p>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </SectionCard>
+      )}
+
+      {partners.length > 0 && (
+        <SectionCard title={`Partners · ${partners.length}`} className="mb-6">
+          <ul className="divide-y divide-border">
+            {partners.map((pt) => (
+              <li key={pt.id} className="flex items-center gap-3 px-5 py-3">
+                <div className="grid size-12 shrink-0 place-items-center rounded-md border border-border bg-elevated">
+                  {pt.logo ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={pt.logo.webpUrl}
+                      alt={`${pt.name} logo`}
+                      className="max-h-10 max-w-10 object-contain"
+                    />
+                  ) : (
+                    <span className="text-[10px] text-muted">No logo</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/partners/${pt.partnerId}`}
+                      className="truncate text-sm font-medium hover:text-accent-text"
+                    >
+                      {pt.name}
+                    </Link>
+                    {pt.role && <Badge variant="accent">{pt.role}</Badge>}
+                  </div>
+                  {pt.website && (
+                    <a
+                      href={pt.website}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="truncate text-xs text-muted hover:text-foreground"
+                    >
+                      {pt.website}
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
         </SectionCard>
       )}
 

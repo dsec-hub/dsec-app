@@ -1,6 +1,7 @@
 import { signOut } from "@/auth";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Icons } from "@/components/icons";
+import { allowedScopesFor } from "@/lib/api-tokens";
 import { requireUser } from "@/lib/dal";
 
 import { SettingsNav } from "./settings-nav";
@@ -10,12 +11,16 @@ export default async function SettingsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireUser();
+  const user = await requireUser();
 
   const items = [
     { href: "/settings/profile", label: "Profile" },
     { href: "/settings/appearance", label: "Appearance" },
     { href: "/settings/password", label: "Password" },
+    // Only surface API & MCP for roles that can actually mint a token.
+    ...(allowedScopesFor(user).length > 0
+      ? [{ href: "/settings/api", label: "API & MCP" }]
+      : []),
   ];
 
   async function handleSignOut() {

@@ -9,6 +9,7 @@ import { requireWrite } from "@/lib/dal";
 import { bool, int, jsonList, str, tierList } from "@/lib/form-data";
 import { DUSA_STATUSES } from "@/lib/options";
 import { apiEnv } from "@/lib/api-env";
+import { revalidateWebsite } from "@/lib/revalidate-website";
 import { archiveToken, createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
 import type { ActionResult } from "@/lib/undo-types";
 
@@ -44,10 +45,22 @@ function parseEvent(fd: FormData) {
   };
 }
 
-function revalidateEvents() {
+/** Refresh the dashboard's own cached pages. */
+function revalidateDashboard() {
   revalidatePath("/events");
   revalidatePath("/events/dusa");
   revalidatePath("/");
+}
+
+/**
+ * Dashboard + public website. Use for mutations that change what the website
+ * shows (create / update / archive / delete); internal-only changes (DUSA
+ * pipeline status, review-form link) should call `revalidateDashboard()` so they
+ * don't needlessly bust the public cache.
+ */
+async function revalidateEvents() {
+  revalidateDashboard();
+  await revalidateWebsite("events");
 }
 
 export async function createEvent(_prev: FormState, fd: FormData): Promise<FormState> {
@@ -55,7 +68,7 @@ export async function createEvent(_prev: FormState, fd: FormData): Promise<FormS
   const values = parseEvent(fd);
   if (!values.name) return { error: "Event name is required." };
   const [row] = await db.insert(events).values(values).returning({ id: events.id });
-  revalidateEvents();
+  await revalidateEvents();
   return { ok: true, message: "Event created", undo: createToken("event", row?.id) };
 }
 
@@ -72,8 +85,36 @@ export async function updateEvent(
     .update(events)
     .set({ ...values, updatedAt: new Date().toISOString() })
     .where(eq(events.id, id));
-  revalidateEvents();
+  await revalidateEvents();
   return { ok: true, message: "Event updated", undo };
+}
+
+/**
+ * Toggle an event between draft and published. Publishing reveals it on the
+ * public website (the dsec-api /website/events feed filters is_public); a draft
+ * lives only in the dashboard. Publishing is gated on the essentials being
+ * filled in so a half-created event can't go live. Reversible via undo.
+ */
+export async function setEventPublished(id: number, published: boolean): Promise<FormState> {
+  await requireWrite("events");
+  if (published) {
+    const [e] = await db
+      .select({ name: events.name, startDate: events.startDate })
+      .from(events)
+      .where(eq(events.id, id))
+      .limit(1);
+    if (!e) return { error: "Event not found." };
+    if (!e.name || !e.startDate) {
+      return { error: "Add a name and start date before publishing." };
+    }
+  }
+  const undo = await snapshotForUpdate("event", id);
+  await db
+    .update(events)
+    .set({ isPublic: published, updatedAt: new Date().toISOString() })
+    .where(eq(events.id, id));
+  await revalidateEvents();
+  return { ok: true, message: published ? "Event published" : "Moved to draft", undo };
 }
 
 export async function archiveEvent(id: number): Promise<FormState> {
@@ -82,7 +123,7 @@ export async function archiveEvent(id: number): Promise<FormState> {
     .update(events)
     .set({ archived: true, updatedAt: new Date().toISOString() })
     .where(eq(events.id, id));
-  revalidateEvents();
+  await revalidateEvents();
   return {
     ok: true,
     message: "Event archived",
@@ -104,7 +145,7 @@ export async function deleteEvent(id: number): Promise<FormState> {
       .where(eq(finance.relatedEventId, id));
     await tx.delete(events).where(eq(events.id, id));
   });
-  revalidateEvents();
+  await revalidateEvents();
   return { ok: true, message: "Event deleted", undo };
 }
 
@@ -136,7 +177,7 @@ export async function createReviewForm(eventId: number): Promise<FormState> {
     return { error: `Could not reach the API: ${(e as Error).message}` };
   }
   revalidatePath(`/events/${eventId}/edit`);
-  revalidateEvents();
+  revalidateDashboard();
   return { ok: true, message: "Review form created" };
 }
 
@@ -153,6 +194,6 @@ export async function updateDusaStatus(
     .update(events)
     .set({ dusaSubmissionStatus: status, updatedAt: new Date().toISOString() })
     .where(eq(events.id, id));
-  revalidateEvents();
+  revalidateDashboard();
   return { ok: true };
 }

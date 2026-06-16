@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { eventSpeakers, eventSponsors } from "@/db/workspace-schema";
+import { eventPartners, eventSpeakers, eventSponsors } from "@/db/workspace-schema";
 import { requireWrite } from "@/lib/dal";
 import { int, str } from "@/lib/form-data";
 import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
@@ -124,4 +124,44 @@ export async function removeEventSponsor(
   await logMutation(user, "delete", "event-sponsor", linkId);
   revalidateEvent(eventId);
   return { ok: true, message: "Sponsor unlinked", undo };
+}
+
+// --- Event partners --------------------------------------------------------
+// Links an existing partner (collaborator club) to this event (many-to-many).
+// The logo lives on the partner and is reused across events. Gated by the
+// events module — same as sponsors — since it edits the event's collaborators.
+
+export async function addEventPartner(
+  eventId: number,
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const user = await requireWrite("events");
+  const partnerId = int(fd, "partner_id");
+  if (!partnerId) return { error: "Pick a partner to add." };
+  const existing = await db
+    .select({ id: eventPartners.id })
+    .from(eventPartners)
+    .where(and(eq(eventPartners.eventId, eventId), eq(eventPartners.partnerId, partnerId)))
+    .limit(1);
+  if (existing.length) return { error: "That partner is already linked to this event." };
+  const [row] = await db
+    .insert(eventPartners)
+    .values({ eventId, partnerId, role: str(fd, "role") })
+    .returning({ id: eventPartners.id });
+  await logMutation(user, "create", "event-partner", row?.id);
+  revalidateEvent(eventId);
+  return { ok: true, message: "Partner linked", undo: createToken("event_partner", row?.id) };
+}
+
+export async function removeEventPartner(
+  linkId: number,
+  eventId: number,
+): Promise<FormState> {
+  const user = await requireWrite("events");
+  const undo = await snapshotForDelete("event_partner", linkId);
+  await db.delete(eventPartners).where(eq(eventPartners.id, linkId));
+  await logMutation(user, "delete", "event-partner", linkId);
+  revalidateEvent(eventId);
+  return { ok: true, message: "Partner unlinked", undo };
 }
