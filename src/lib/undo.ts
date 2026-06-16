@@ -7,6 +7,7 @@ import type { PgTable } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { appRole, appSetting, appUser, committee, events, finance, people, sponsors } from "@/db/schema";
 import {
+  eventConnections,
   eventPartners,
   eventSpeakers,
   eventSponsors,
@@ -36,6 +37,7 @@ export const REGISTRY: Record<UndoKey, Reg> = {
   event_speaker: { table: eventSpeakers, module: "events", label: "Speaker", paths: ["/events"] },
   event_sponsor: { table: eventSponsors, module: "events", label: "Event sponsor", paths: ["/events"] },
   event_partner: { table: eventPartners, module: "events", label: "Event partner", paths: ["/events"] },
+  event_connection: { table: eventConnections, module: "events", label: "Event connection", paths: ["/events"] },
   finance: { table: finance, module: "finance", label: "Finance entry", paths: ["/finance", "/dashboard", "/"] },
   person: { table: people, module: "people", label: "Person", paths: ["/people", "/dashboard", "/"] },
   sponsor: { table: sponsors, module: "sponsors", label: "Sponsor", paths: ["/sponsors", "/dashboard", "/"] },

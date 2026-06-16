@@ -15,6 +15,7 @@ import { getEventById, getPeopleOptions, getSponsorOptions } from "@/lib/queries
 import { canWrite } from "@/lib/rbac";
 import { fetchReviewSummary } from "@/lib/reviews";
 import {
+  getEventConnections,
   getEventPartners,
   getEventSpeakers,
   getMedia,
@@ -35,7 +36,7 @@ export default async function EventDetailPage({
   const eventId = Number(id);
   if (Number.isNaN(eventId)) notFound();
 
-  const [event, people, sponsors, committees, media, relatedTasks, speakers, partners] =
+  const [event, people, sponsors, committees, media, relatedTasks, speakers, partners, connections] =
     await Promise.all([
       getEventById(eventId),
       getPeopleOptions(),
@@ -45,6 +46,7 @@ export default async function EventDetailPage({
       getRelatedTasks("event", eventId),
       getEventSpeakers(eventId).catch(() => []),
       getEventPartners(eventId).catch(() => []),
+      getEventConnections(eventId).catch(() => []),
     ]);
   if (!event) notFound();
 
@@ -296,6 +298,33 @@ export default async function EventDetailPage({
                     </a>
                   )}
                 </div>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      )}
+
+      {connections.length > 0 && (
+        <SectionCard title={`Related events · ${connections.length}`} className="mb-6">
+          <ul className="divide-y divide-border">
+            {connections.map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/events/${c.otherId}`}
+                      className="truncate text-sm font-medium hover:text-accent-text"
+                    >
+                      {c.name}
+                    </Link>
+                    {c.label && <Badge variant="accent">{c.label}</Badge>}
+                    {!c.isPublic && <Badge variant="warning">Draft</Badge>}
+                  </div>
+                  <div className="mt-1 text-xs text-muted">
+                    {c.startDate ? formatDate(c.startDate) : "No date"}
+                  </div>
+                </div>
+                <Badge variant={eventStatusVariant(c.status)}>{c.status ?? "—"}</Badge>
               </li>
             ))}
           </ul>

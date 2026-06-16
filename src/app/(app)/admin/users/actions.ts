@@ -82,6 +82,30 @@ export async function updateUser(
   return { ok: true, message: "User updated", undo };
 }
 
+/**
+ * Send a user back through the first-run onboarding wizard by clearing their
+ * completion stamp. Their next navigation into the app is forced to /onboarding
+ * (the (app) layout reads this fresh each request). Their existing profile is
+ * kept and prefilled — this re-triggers the flow, it doesn't wipe their data.
+ */
+export async function resetUserOnboarding(id: number): Promise<FormState> {
+  await requireAdmin();
+
+  const [target] = await db.select().from(appUser).where(eq(appUser.id, id)).limit(1);
+  if (!target) return { error: "User not found." };
+  if (!target.onboardingCompletedAt) {
+    return { ok: true, message: "User is already set to onboard." };
+  }
+
+  await db
+    .update(appUser)
+    .set({ onboardingCompletedAt: null, updatedAt: new Date().toISOString() })
+    .where(eq(appUser.id, id));
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${id}/edit`);
+  return { ok: true, message: "Onboarding reset — they'll set up their profile again." };
+}
+
 export async function setUserActive(id: number, active: boolean): Promise<void> {
   const admin = await requireAdmin();
   if (admin.id === id && !active) redirect("/admin/users");

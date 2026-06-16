@@ -6,6 +6,7 @@ import { db } from "@/db";
 import {
   attachments,
   documents,
+  eventConnections,
   eventPartners,
   eventSpeakers,
   eventSponsors,
@@ -486,6 +487,59 @@ export async function getEventPartners(eventId: number) {
   const byId = new Map<number, (typeof logos)[number]>();
   for (const l of logos) if (!byId.has(l.entityId)) byId.set(l.entityId, l);
   return rows.map((r) => ({ ...r, logo: byId.get(r.partnerId) ?? null }));
+}
+
+/** Other events connected to this one (a symmetric, visual-only relation). The
+ * link is order-independent, so the "other" side is whichever id isn't `eventId`.
+ * Archived events are dropped so the list never shows a dangling connection. */
+export type EventConnectionRow = Awaited<ReturnType<typeof getEventConnections>>[number];
+
+export async function getEventConnections(eventId: number) {
+  const links = await db
+    .select({
+      id: eventConnections.id,
+      eventAId: eventConnections.eventAId,
+      eventBId: eventConnections.eventBId,
+      label: eventConnections.label,
+    })
+    .from(eventConnections)
+    .where(
+      and(
+        eq(eventConnections.archived, false),
+        or(eq(eventConnections.eventAId, eventId), eq(eventConnections.eventBId, eventId)),
+      ),
+    )
+    .orderBy(asc(eventConnections.id));
+  if (!links.length) return [];
+  const otherIds = links.map((l) => (l.eventAId === eventId ? l.eventBId : l.eventAId));
+  const others = await db
+    .select({
+      id: events.id,
+      name: events.name,
+      status: events.status,
+      startDate: events.startDate,
+      isPublic: events.isPublic,
+    })
+    .from(events)
+    .where(and(eq(events.archived, false), inArray(events.id, otherIds)));
+  const byId = new Map(others.map((e) => [e.id, e]));
+  return links
+    .map((l) => {
+      const otherId = l.eventAId === eventId ? l.eventBId : l.eventAId;
+      const other = byId.get(otherId);
+      if (!other) return null; // other event archived/missing
+      return {
+        id: l.id,
+        label: l.label,
+        otherId,
+        name: other.name,
+        status: other.status,
+        startDate: other.startDate,
+        isPublic: other.isPublic,
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .sort((a, b) => (b.startDate ?? "").localeCompare(a.startDate ?? ""));
 }
 
 // ===========================================================================

@@ -93,7 +93,7 @@ export function EventForm({
   sponsors: Option[];
   committees: Option[];
   event?: EventRow;
-  onSuccess?: () => void;
+  onSuccess?: (result: FormState) => void;
   onCancel?: () => void;
   redirectOnSuccess?: string;
   canWrite?: boolean;
@@ -128,7 +128,7 @@ export function EventForm({
 
   useEffect(() => {
     if (!state?.ok) return;
-    if (onSuccess) onSuccess();
+    if (onSuccess) onSuccess(state);
     else if (redirectOnSuccess) router.push(redirectOnSuccess);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);

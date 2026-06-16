@@ -14,6 +14,7 @@ export type UndoKey =
   | "event_speaker"
   | "event_sponsor"
   | "event_partner"
+  | "event_connection"
   | "finance"
   | "person"
   | "sponsor"
@@ -51,5 +52,13 @@ export type SignedUndoToken = string;
  * token) becomes the toast's Undo button.
  */
 export type ActionResult =
-  | { error?: string; ok?: boolean; message?: string; undo?: SignedUndoToken }
+  | {
+      error?: string;
+      ok?: boolean;
+      message?: string;
+      undo?: SignedUndoToken;
+      // The id of a row a "create" action just inserted. Lets a create modal flip
+      // to a second stage (images / sponsors / etc.) bound to the new entity.
+      id?: number;
+    }
   | undefined;

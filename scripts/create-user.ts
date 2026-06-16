@@ -41,6 +41,9 @@ async function main() {
     .where(eq(appUser.email, normalizedEmail))
     .limit(1);
 
+  // Bootstrap admins skip the first-run onboarding wizard.
+  const now = new Date().toISOString();
+
   if (existing) {
     await db
       .update(appUser)
@@ -49,6 +52,7 @@ async function main() {
         name: name ?? existing.name,
         isActive: true,
         role: "Admin",
+        ...(existing.onboardingCompletedAt ? {} : { onboardingCompletedAt: now }),
         ...(adminRole ? { roleId: adminRole.id } : {}),
       })
       .where(eq(appUser.id, existing.id));
@@ -61,6 +65,7 @@ async function main() {
       role: "Admin",
       roleId: adminRole?.id ?? null,
       isActive: true,
+      onboardingCompletedAt: now,
     });
     console.log(`Created user: ${normalizedEmail}`);
   }

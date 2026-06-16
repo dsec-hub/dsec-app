@@ -255,6 +255,10 @@ export const appUser = pgTable("app_user", {
 	themeFontBody: varchar("theme_font_body", { length: 32 }),
 	themeWeightTitle: varchar("theme_weight_title", { length: 16 }),
 	themeWeightBody: varchar("theme_weight_body", { length: 16 }),
+	// Null until the member finishes the first-run onboarding wizard. The (app)
+	// layout forces incomplete users to /onboarding; an admin can clear this to
+	// send someone through it again. Added app-side (scripts/), not via Alembic.
+	onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true, mode: 'string' }),
 	isActive: boolean("is_active").default(true).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),

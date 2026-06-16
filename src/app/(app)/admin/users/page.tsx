@@ -38,6 +38,7 @@ export default async function UsersPage() {
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {isAdmin(u.roleModules) && <Badge variant="accent">Admin</Badge>}
+                    {!u.onboardingCompletedAt && <Badge variant="warning">Onboarding</Badge>}
                     <Badge variant="neutral">{u.roleName ?? "No role"}</Badge>
                     <Badge variant={u.isActive ? "success" : "danger"}>
                       {u.isActive ? "Active" : "Disabled"}

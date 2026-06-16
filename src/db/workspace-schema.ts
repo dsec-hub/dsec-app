@@ -289,6 +289,21 @@ export const eventPartners = pgTable("event_partner", {
   archived: boolean().default(false).notNull(),
 });
 
+// --- event connections -----------------------------------------------------
+// Symmetric, visual-only links between two events ("these events are related").
+// One row per pair, stored canonically with eventAId < eventBId (enforced in the
+// action layer) so a pair has exactly one row regardless of which event added it.
+
+export const eventConnections = pgTable("event_connection", {
+  id: serial().primaryKey(),
+  eventAId: integer("event_a_id").notNull(),
+  eventBId: integer("event_b_id").notNull(),
+  label: varchar({ length: 64 }), // optional relation label shown on both, e.g. "Series"
+  createdAt: ts("created_at").defaultNow().notNull(),
+  updatedAt: ts("updated_at").defaultNow().notNull(),
+  archived: boolean().default(false).notNull(),
+});
+
 // --- attachments (PDFs/images) ---------------------------------------------
 // Binaries live in Supabase Storage; this row holds only the URL + metadata.
 // Written by dsec-api (POST /attachments, which auto-compresses); read here.

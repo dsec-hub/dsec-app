@@ -66,6 +66,12 @@ export default async function AppLayout({
   const user = await getCurrentUser();
   if (!user || !user.isActive) redirect("/signin");
 
+  // First-run gate: a member who hasn't finished onboarding can't reach the app
+  // until they do. Authoritative (fresh DB read) so an admin "reset onboarding"
+  // takes effect on the user's very next navigation. The wizard lives outside
+  // this route group, so there's no redirect loop.
+  if (!user.onboardingCompletedAt) redirect("/onboarding");
+
   // Best-effort usage heartbeat — records that this member accessed the app.
   // Scheduled with `after` so the Neon INSERT runs once the response has been
   // sent rather than blocking the render (it used to sit in the critical path).

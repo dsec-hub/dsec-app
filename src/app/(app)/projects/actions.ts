@@ -72,7 +72,7 @@ export async function createProject(_prev: FormState, fd: FormData): Promise<For
     .returning({ id: projects.id });
   await logMutation(user, "create", "project", row?.id);
   await revalidateProjects();
-  return { ok: true, message: "Project created", undo: createToken("project", row?.id) };
+  return { ok: true, message: "Project created", undo: createToken("project", row?.id), id: row?.id };
 }
 
 export async function updateProject(

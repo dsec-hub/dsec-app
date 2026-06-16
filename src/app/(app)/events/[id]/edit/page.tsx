@@ -10,6 +10,8 @@ import { getEventById, getPeopleOptions, getSponsorOptions } from "@/lib/queries
 import { canWrite } from "@/lib/rbac";
 import { fetchReviewSummary } from "@/lib/reviews";
 import {
+  getEventConnections,
+  getEventOptions,
   getEventPartners,
   getEventSpeakers,
   getEventSponsors,
@@ -19,6 +21,7 @@ import {
 
 import { archiveEvent, deleteEvent, updateEvent } from "../../actions";
 import { EventForm } from "../../event-form";
+import { EventConnections } from "../event-connections";
 import { EventPartners } from "../event-partners";
 import { EventSpeakers } from "../event-speakers";
 import { EventSponsors } from "../event-sponsors";
@@ -45,6 +48,8 @@ export default async function EditEventPage({
     eventSponsors,
     partnerOptions,
     eventPartners,
+    eventOptions,
+    eventConnections,
   ] = await Promise.all([
     getEventById(eventId),
     getPeopleOptions(),
@@ -55,6 +60,8 @@ export default async function EditEventPage({
     getEventSponsors(eventId).catch(() => []),
     getPartnerOptions(),
     getEventPartners(eventId).catch(() => []),
+    getEventOptions(),
+    getEventConnections(eventId).catch(() => []),
   ]);
   if (!event) notFound();
 
@@ -131,6 +138,14 @@ export default async function EditEventPage({
           eventId={eventId}
           linked={eventPartners}
           partnerOptions={partnerOptions}
+          canWrite={writable}
+        />
+      </div>
+      <div className="mt-6">
+        <EventConnections
+          eventId={eventId}
+          linked={eventConnections}
+          eventOptions={eventOptions}
           canWrite={writable}
         />
       </div>

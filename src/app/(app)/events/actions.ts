@@ -69,7 +69,7 @@ export async function createEvent(_prev: FormState, fd: FormData): Promise<FormS
   if (!values.name) return { error: "Event name is required." };
   const [row] = await db.insert(events).values(values).returning({ id: events.id });
   await revalidateEvents();
-  return { ok: true, message: "Event created", undo: createToken("event", row?.id) };
+  return { ok: true, message: "Event created", undo: createToken("event", row?.id), id: row?.id };
 }
 
 export async function updateEvent(

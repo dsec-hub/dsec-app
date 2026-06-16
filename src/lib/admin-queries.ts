@@ -10,6 +10,7 @@ export type UserRow = {
   email: string;
   name: string | null;
   isActive: boolean;
+  onboardingCompletedAt: string | null;
   roleId: number | null;
   roleName: string | null;
   roleModules: string[] | null;
@@ -47,6 +48,7 @@ export async function getUsers(): Promise<UserRow[]> {
       email: appUser.email,
       name: appUser.name,
       isActive: appUser.isActive,
+      onboardingCompletedAt: appUser.onboardingCompletedAt,
       roleId: appUser.roleId,
       roleName: appRole.name,
       roleModules: appRole.modules,
@@ -64,6 +66,7 @@ export async function getUserById(id: number): Promise<UserRow | undefined> {
       email: appUser.email,
       name: appUser.name,
       isActive: appUser.isActive,
+      onboardingCompletedAt: appUser.onboardingCompletedAt,
       roleId: appUser.roleId,
       roleName: appRole.name,
       roleModules: appRole.modules,

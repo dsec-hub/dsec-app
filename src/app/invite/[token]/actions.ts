@@ -111,7 +111,10 @@ export async function acceptInvite(
     await signIn("credentials", {
       email: invite.email,
       password,
-      redirectTo: "/",
+      // New accounts land in the first-run wizard. The (app) layout would force
+      // this anyway (onboarding_completed_at is null on a fresh account); sending
+      // them here directly just skips the bounce.
+      redirectTo: "/onboarding",
     });
   } catch (error) {
     if (error instanceof AuthError) {

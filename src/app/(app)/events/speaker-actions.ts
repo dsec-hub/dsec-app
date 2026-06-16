@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { eventPartners, eventSpeakers, eventSponsors } from "@/db/workspace-schema";
+import { eventConnections, eventPartners, eventSpeakers, eventSponsors } from "@/db/workspace-schema";
 import { requireWrite } from "@/lib/dal";
 import { int, str } from "@/lib/form-data";
 import { createToken, snapshotForDelete, snapshotForUpdate } from "@/lib/undo";
@@ -164,4 +164,49 @@ export async function removeEventPartner(
   await logMutation(user, "delete", "event-partner", linkId);
   revalidateEvent(eventId);
   return { ok: true, message: "Partner unlinked", undo };
+}
+
+// --- Event connections -----------------------------------------------------
+// Symmetric, visual-only links between two events ("these events are related").
+// Stored canonically (smaller id first) so a pair has exactly one row regardless
+// of which event it was added from. Hard-deleted on remove (like sponsors) so
+// the pair can be re-linked later. Gated by the events module.
+
+export async function addEventConnection(
+  eventId: number,
+  _prev: FormState,
+  fd: FormData,
+): Promise<FormState> {
+  const user = await requireWrite("events");
+  const otherId = int(fd, "other_event_id");
+  if (!otherId) return { error: "Pick an event to connect." };
+  if (otherId === eventId) return { error: "An event can't be connected to itself." };
+  // Canonical ordering: smaller id is always eventAId, so the pair is unique.
+  const a = Math.min(eventId, otherId);
+  const b = Math.max(eventId, otherId);
+  const existing = await db
+    .select({ id: eventConnections.id })
+    .from(eventConnections)
+    .where(and(eq(eventConnections.eventAId, a), eq(eventConnections.eventBId, b)))
+    .limit(1);
+  if (existing.length) return { error: "These events are already connected." };
+  const [row] = await db
+    .insert(eventConnections)
+    .values({ eventAId: a, eventBId: b, label: str(fd, "label") })
+    .returning({ id: eventConnections.id });
+  await logMutation(user, "create", "event-connection", row?.id);
+  revalidateEvent(eventId);
+  return { ok: true, message: "Events connected", undo: createToken("event_connection", row?.id) };
+}
+
+export async function removeEventConnection(
+  linkId: number,
+  eventId: number,
+): Promise<FormState> {
+  const user = await requireWrite("events");
+  const undo = await snapshotForDelete("event_connection", linkId);
+  await db.delete(eventConnections).where(eq(eventConnections.id, linkId));
+  await logMutation(user, "delete", "event-connection", linkId);
+  revalidateEvent(eventId);
+  return { ok: true, message: "Connection removed", undo };
 }

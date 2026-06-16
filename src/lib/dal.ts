@@ -14,6 +14,7 @@ export type CurrentUser = {
   email: string;
   name: string | null;
   isActive: boolean;
+  onboardingCompletedAt: string | null;
   roleId: number | null;
   roleName: string | null;
   personId: number | null;
@@ -44,6 +45,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       email: appUser.email,
       name: appUser.name,
       isActive: appUser.isActive,
+      onboardingCompletedAt: appUser.onboardingCompletedAt,
       roleId: appUser.roleId,
       roleName: appRole.name,
       personId: appUser.personId,
@@ -67,6 +69,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     email: row.email,
     name: row.name,
     isActive: row.isActive,
+    onboardingCompletedAt: row.onboardingCompletedAt,
     roleId: row.roleId,
     roleName: row.roleName,
     personId: row.personId,

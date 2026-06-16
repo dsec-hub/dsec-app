@@ -9,12 +9,14 @@ import { canWrite } from "@/lib/rbac";
 import { projectScope } from "@/lib/scope";
 import {
   getEventOptions,
+  getMedia,
   getPersonOptions,
+  getProjectById,
   getProjects,
   getProjectStats,
 } from "@/lib/workspace-queries";
 
-import { NewProjectButton } from "./new-project-button";
+import { NewProjectButton, type CreatedProject } from "./new-project-button";
 
 function projectStatusVariant(status: string | null | undefined): BadgeVariant {
   switch (status) {
@@ -36,7 +38,11 @@ function projectStatusVariant(status: string | null | undefined): BadgeVariant {
   }
 }
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ created?: string }>;
+}) {
   const me = await requireUser();
   // Module access → all projects; a lead without the module → only theirs
   // (read-only); neither → bounce. See lib/scope.ts.
@@ -53,6 +59,18 @@ export default async function ProjectsPage() {
     ? await Promise.all([getPersonOptions(), getEventOptions()])
     : [[], []];
 
+  // After the create modal inserts a project it sets ?created=ID; load its images
+  // so the modal's stage-2 card shows live data (uploads revalidate /projects).
+  const createdId = writable ? Number((await searchParams).created) : NaN;
+  let created: CreatedProject | null = null;
+  if (writable && Number.isFinite(createdId)) {
+    const proj = await getProjectById(createdId);
+    if (proj) {
+      const media = await getMedia("project", createdId);
+      created = { id: createdId, name: proj.name, media };
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -63,7 +81,7 @@ export default async function ProjectsPage() {
             : "The projects you lead."
         }
         breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Projects" }]}
-        action={writable && <NewProjectButton people={people} events={events} />}
+        action={writable && <NewProjectButton people={people} events={events} created={created} />}
       />
 
       {stats && (
