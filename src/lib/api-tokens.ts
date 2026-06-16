@@ -155,3 +155,29 @@ export function mcpServerUrl(): string {
   const env = apiEnv();
   return env ? `${env.base}/mcp` : "https://api.dsec.club/mcp";
 }
+
+/**
+ * Fetch the per-scope `llm.md` guide from dsec-api (the schema/tool owner, so
+ * the doc can never drift from the real tools). The guide is an instruction
+ * sheet for an AI assistant and contains no secret — the key is a placeholder —
+ * so the endpoint is public; we just proxy it through the app for download.
+ * Returns null if the API isn't configured or is unreachable.
+ */
+export async function fetchLlmGuide(
+  scopes: ApiScope[],
+  label?: string,
+): Promise<string | null> {
+  const env = apiEnv();
+  if (!env || scopes.length === 0) return null;
+  const params = new URLSearchParams({ scopes: scopes.join(",") });
+  if (label) params.set("label", label);
+  try {
+    const res = await fetch(`${env.base}/mcp-setup/llm?${params.toString()}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  }
+}

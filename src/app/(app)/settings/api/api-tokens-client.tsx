@@ -38,10 +38,65 @@ function CopyButton({ value, label = "Copy" }: { value: string; label?: string }
   );
 }
 
-/** The one-and-only reveal of a freshly minted key. */
-function RevealedKey({ rawKey }: { rawKey: string }) {
+/** Build the same-origin download URL for the AI-assistant guide. */
+function guideHref(scopes: string[], label?: string): string {
+  const params = new URLSearchParams({ scopes: scopes.join(",") });
+  if (label) params.set("label", label);
+  return `/settings/api/llm-guide?${params.toString()}`;
+}
+
+/**
+ * Download or copy the `llm.md` guide for a set of scopes. The guide teaches an
+ * AI assistant (Claude, ChatGPT, Codex, Claude Code) how to drive the DSEC MCP
+ * with exactly the tools those scopes allow. Generated server-side from the live
+ * tool catalogue and contains no secret.
+ */
+export function GuideActions({
+  scopes,
+  label,
+  compact = false,
+}: {
+  scopes: string[];
+  label?: string;
+  compact?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  if (scopes.length === 0) return null;
+  const href = guideHref(scopes, label);
   return (
-    <div className="space-y-2 rounded-xl border border-accent/40 bg-accent/5 p-4">
+    <div className="flex flex-wrap items-center gap-2">
+      <a href={href} download="llm.md" className={cn(buttonGhost, "gap-1.5")}>
+        <Icons.documents className="h-4 w-4" />
+        {compact ? "Guide" : "Download llm.md"}
+      </a>
+      {!compact && (
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const res = await fetch(href, { cache: "no-store" });
+              if (!res.ok) throw new Error();
+              await navigator.clipboard.writeText(await res.text());
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch {
+              toast.error("Couldn't copy the guide.");
+            }
+          }}
+          className={cn(buttonGhost, "gap-1.5")}
+        >
+          {copied ? <Icons.check className="h-4 w-4" /> : <Icons.copy className="h-4 w-4" />}
+          {copied ? "Copied" : "Copy guide"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** The one-and-only reveal of a freshly minted key. */
+function RevealedKey({ rawKey, scopes }: { rawKey: string; scopes: string[] }) {
+  return (
+    <div className="space-y-3 rounded-xl border border-accent/40 bg-accent/5 p-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium">Your new token</p>
         <CopyButton value={rawKey} />
@@ -52,6 +107,14 @@ function RevealedKey({ rawKey }: { rawKey: string }) {
       <p className="text-xs text-danger">
         Copy it now — for security it’s shown only once and can’t be retrieved again.
       </p>
+      <div className="space-y-1.5 border-t border-accent/20 pt-3">
+        <p className="text-xs text-muted">
+          Hand this guide to Claude, ChatGPT, Codex or Claude Code so it knows how to use the
+          workspace with this token’s scopes ({scopes.join(", ")}). Paste your key into its MCP
+          config — the guide keeps the key as a placeholder.
+        </p>
+        <GuideActions scopes={scopes} label="your new token" />
+      </div>
     </div>
   );
 }
@@ -74,11 +137,11 @@ export function CreateTokenForm({
     }
   }, [state]);
 
-  const revealed = state && "ok" in state && state.ok ? state.rawKey : null;
+  const minted = state && "ok" in state && state.ok ? state : null;
 
   return (
     <div className="space-y-4">
-      {revealed && <RevealedKey rawKey={revealed} />}
+      {minted && <RevealedKey rawKey={minted.rawKey} scopes={minted.scopes} />}
       <form ref={formRef} action={formAction} className="space-y-5">
         <FormError>{state && "error" in state ? state.error : undefined}</FormError>
         <Field label="Token name" hint="e.g. “Claude desktop” or “my laptop”.">
@@ -99,8 +162,8 @@ export function CreateTokenForm({
   );
 }
 
-/** A copyable MCP connection snippet for chat clients. */
-export function McpConnection({ url }: { url: string }) {
+/** A copyable MCP connection snippet for chat clients, plus a role-wide guide. */
+export function McpConnection({ url, allowedScopes }: { url: string; allowedScopes: string[] }) {
   const snippet = JSON.stringify(
     {
       mcpServers: {
@@ -111,7 +174,7 @@ export function McpConnection({ url }: { url: string }) {
     2,
   );
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted">
           Server URL <code className="font-mono text-xs text-foreground">{url}</code> · transport
@@ -122,6 +185,15 @@ export function McpConnection({ url }: { url: string }) {
       <pre className="overflow-x-auto rounded-md bg-background px-3 py-2 font-mono text-xs leading-relaxed">
         {snippet}
       </pre>
+      {allowedScopes.length > 0 && (
+        <div className="space-y-1.5 border-t border-border pt-3">
+          <p className="text-xs text-muted">
+            New to MCP? Download a ready-made <code className="font-mono">llm.md</code> guide for
+            your assistant — it covers every tool your role can use and how to drive them.
+          </p>
+          <GuideActions scopes={allowedScopes} label="your DSEC role" />
+        </div>
+      )}
     </div>
   );
 }

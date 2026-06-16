@@ -1,4 +1,5 @@
 import { Badge, buttonGhost, EmptyState, PageHeader, SectionCard } from "@/components/ui";
+import { Icons } from "@/components/icons";
 import { apiEnv } from "@/lib/api-env";
 import {
   allowedScopesFor,
@@ -77,14 +78,27 @@ export default async function ApiSettingsPage() {
                     </p>
                   </div>
                   {!t.revoked && (
-                    <form action={revokeApiToken.bind(null, t.id)}>
-                      <button
-                        type="submit"
-                        className={cn(buttonGhost, "text-danger hover:text-danger")}
+                    <div className="flex items-center gap-1">
+                      <a
+                        href={`/settings/api/llm-guide?scopes=${encodeURIComponent(
+                          t.scopes.join(","),
+                        )}&label=${encodeURIComponent(t.name)}`}
+                        download="llm.md"
+                        className={cn(buttonGhost, "gap-1.5")}
+                        title="Download the AI-assistant guide for this token's scopes"
                       >
-                        Revoke
-                      </button>
-                    </form>
+                        <Icons.documents className="h-4 w-4" />
+                        Guide
+                      </a>
+                      <form action={revokeApiToken.bind(null, t.id)}>
+                        <button
+                          type="submit"
+                          className={cn(buttonGhost, "text-danger hover:text-danger")}
+                        >
+                          Revoke
+                        </button>
+                      </form>
+                    </div>
                   )}
                 </li>
               ))}
@@ -98,7 +112,7 @@ export default async function ApiSettingsPage() {
               Add the server to Claude (Desktop / Code) or any MCP-capable assistant, with your
               token as a bearer header.
             </p>
-            <McpConnection url={mcpServerUrl()} />
+            <McpConnection url={mcpServerUrl()} allowedScopes={allowed} />
           </div>
         </SectionCard>
       </div>

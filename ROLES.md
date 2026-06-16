@@ -64,6 +64,20 @@ read/write that table directly (ownership-checked). Note: `trigger`/`ingest`
 tokens require the production `DSEC_API_KEY` service key to itself hold those
 scopes.
 
+### The `llm.md` guide (auto-generated)
+
+Whenever a token is minted — and per-token, and for the whole role — the UI
+offers a downloadable **`llm.md`**: an instruction sheet you hand to an AI
+assistant (Claude Code, Codex, ChatGPT, a Claude chat) so it knows how to drive
+the MCP with exactly the tools that token's scopes allow. It's rendered
+server-side by dsec-api from a single tool catalogue
+(`app/features/mcp/catalog.py`), so it can never drift from the real tools — a
+test asserts the catalogue matches the registered FastMCP tools. The guide
+carries **no secret** (the key is a `dsec_live_YOUR_KEY` placeholder). Endpoint:
+`GET /mcp-setup/llm?scopes=read,write`; the dashboard proxies it through
+`/settings/api/llm-guide` for download. Regenerate the committed full-scope copy
+(repo-root `llm.md`) with `dsec-api/scripts/gen_llm_guide.py`.
+
 ## Enforcement (defense in depth)
 
 1. **Proxy** (`proxy.ts` → `auth.config.ts`) — coarse route gate from the JWT
