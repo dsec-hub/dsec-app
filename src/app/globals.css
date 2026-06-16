@@ -1,189 +1,555 @@
 @import "tailwindcss";
 
-/*
- * DSEC Exec Dashboard — theme tokens.
- *
- * Design language follows the Resend DESIGN.md (./DESIGN.md): a minimal
- * developer-tool brand — near-pure-black canvas, off-white text, hairline
- * borders made from translucent white, a strict 12px container vocabulary, and
- * atmospheric (glow, not shadow) depth. No decorative chrome.
- *
- * Two deviations from stock Resend: titles run Geist Mono instead of Resend's
- * Domaine serif, and the single action colour is DSEC's Action Pink (#e91e63,
- * the "CTAs / highlights" colour from dsec-website) rather than Resend's white.
- *
- * Tailwind v4 reads the @theme block to generate utilities (bg-background,
- * border-border, text-muted, bg-accent, …). The utilities reference plain CSS
- * variables (via `@theme inline`) whose VALUES are redefined per theme below,
- * so every existing utility re-colours automatically when `.dark` is toggled.
- */
+/* ============================================================
+   DSEC DESIGN SYSTEM - "DSEC OS"  (dark handheld-console / CRT)
+   A pixel-art arcade built in the dark. Neon accents, chunky
+   cream offset shadows for 3D pop, jagged pixel-skyline dividers,
+   and a yellow rubber-duck mascot. Built from scratch.
+   ============================================================ */
 
-/* Class strategy: `dark:` variants + token swaps key off `.dark` on <html>. */
-@custom-variant dark (&:where(.dark, .dark *));
+@theme {
+  /* - Surfaces (dark) - pulled from the original DSEC brand (near-black) - */
+  --color-bg: #0a0a0a; /* page                                    */
+  --color-panel: #111111; /* card surface                         */
+  --color-panel-2: #1a1a1a; /* alt surface                        */
+  --color-void: #050505; /* deepest wells / footer                */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-elevated: var(--elevated);
-  --color-border: var(--border);
+  /* - Line + text - */
+  --color-paper: #f5efe2; /* LIGHT - text, borders, shadows on dark */
+  --color-ink: #0a0714; /* DARK - text/borders on bright accents   */
 
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
+  /* - Brand accents (DSEC palette from the original site) - */
+  --color-blue: #3d6bff; /* structure                             */
+  --color-pink: #e91e63; /* Action Pink - CTAs, highlights         */
+  --color-yellow: #ffcf33; /* DUCK yellow - mascot identity        */
+  --color-mint: #2ce0a3; /* success                               */
+  --color-sky: #00bcd4; /* Tech Glow Cyan - CRT                    */
+  --color-violet: #9c27b0; /* Creative Violet                      */
+  --color-lime: #c6ff00; /* Signal Lime                            */
+  --color-coral: #ff6b6b; /* Energy Coral                          */
 
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  /* Accent used as *text* (links, badges). Separate from --accent so the fill
-     can stay the exact brand pink while text gets enough contrast for WCAG AA. */
-  --color-accent-text: var(--accent-text);
+  /* - Type: pixel display + grotesk body + mono utility - */
+  --font-display: var(--font-display), "Courier New", monospace;
+  --font-body: var(--font-body), system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
 
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-geist-mono);
+  --ease-pop: cubic-bezier(0.2, 0.9, 0.3, 1.3);
+  /* strong curves - built-in CSS easings are too weak for UI feedback */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
-/* ── Light — clean cool inversion of the Resend canvas ────────────────── */
 :root {
-  --background: #f7f8fa; /* cool off-white page floor                       */
-  --surface: #ffffff; /* card                                              */
-  --elevated: #eef0f3; /* raised fill / active nav / avatar chip           */
-  --border: rgba(0, 0, 0, 0.1); /* translucent-ink hairline                */
-
-  --foreground: #0a0a0c; /* near-black ink                                 */
-  --muted: #5c6063; /* muted body / subtitles                             */
-
-  --accent: #e91e63; /* DSEC Action Pink (fills: buttons, today-dot)        */
-  --accent-foreground: #ffffff;
-  --accent-text: #c2185b; /* darker pink for small text — #e91e63 is only
-                             ~4.35:1 on white (below AA); this clears it       */
-
-  --success: #1f8a65;
-  --warning: #b45309;
-  --danger: #e5193f;
-
-  color-scheme: light;
+  /* chunky cream offset shadow - the 3D signature, pops on dark */
+  --shadow-pix: 4px 4px 0 0 var(--color-paper);
+  --shadow-pix-lg: 8px 8px 0 0 var(--color-paper);
 }
 
-/* ── Dark — Resend near-pure-black canvas, off-white text ─────────────── */
-.dark {
-  --background: #000000; /* near-pure black canvas                          */
-  --surface: #0a0a0c; /* card — barely lifted off black                    */
-  --elevated: #141416; /* hover / active fill                              */
-  --border: rgba(255, 255, 255, 0.1); /* translucent-white hairline        */
-
-  --foreground: #fcfdff; /* off-white                                      */
-  --muted: #9a9da0; /* muted body / subtitles                             */
-
-  --accent: #ff5c8a; /* DSEC pink, lifted for contrast on dark            */
-  --accent-foreground: #1a0a10;
-  --accent-text: #ff5c8a; /* already high-contrast on the near-black canvas  */
-
-  --success: #11ff99;
-  --warning: #ffc53d;
-  --danger: #ff2047;
-
-  color-scheme: dark;
+* {
+  border-color: var(--color-paper);
 }
 
 html {
-  /* Reset color-scheme; the no-flash script sets it per resolved theme. */
-  color-scheme: light dark;
+  scroll-behavior: smooth;
+  color-scheme: dark;
 }
 
-/* Display size (Appearance → Display size). Scales the whole UI by changing the
-   root font-size — Tailwind's spacing scale is rem-based, so paddings, gaps and
-   control heights track the text. "default" sets no attribute (browser 16px). */
-html[data-display="compact"] {
-  font-size: 15px;
-}
-html[data-display="large"] {
-  font-size: 17px;
-}
-
-body {
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  /* Smooth the swap when toggling theme. */
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
-}
-
-/* Titles run monospace by default (Resend uses a serif display; the brief calls
- * for mono). `--font-title` lets a user's Appearance choice override headings
- * independently of body text; unset, it falls back to the brand mono face. */
-h1,
-h2,
-h3,
-.font-title {
-  font-family: var(--font-title, var(--font-mono)), ui-monospace, monospace;
-  letter-spacing: -0.01em;
-}
-
-::selection {
-  background: color-mix(in oklab, var(--color-accent) 28%, transparent);
-}
-
-/* Thin, unobtrusive scrollbars that suit either surface. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
-}
-
-/* Enter animations for overlays (modal panel, nav drawer, backdrop). Kept short
-   (150–200ms) and state-conveying, not decorative. The prefers-reduced-motion
-   block below collapses their duration to ~0, so they're automatically skipped
-   for users who ask for reduced motion. */
-@keyframes dsec-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes dsec-pop-in {
-  from { opacity: 0; transform: translateY(4px) scale(0.98); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes dsec-slide-in-left {
-  from { transform: translateX(-100%); }
-  to { transform: none; }
-}
-.animate-fade-in { animation: dsec-fade-in 0.15s ease-out both; }
-.animate-pop-in { animation: dsec-pop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.animate-slide-in-left { animation: dsec-slide-in-left 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
-
-/* Keyboard focus: a visible, on-brand ring for anything that doesn't set its own
-   (nav links, icon buttons, bare elements). Mouse clicks don't trigger it
-   (:focus-visible), so it never adds chrome for pointer users. WCAG 2.4.7. */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-/* Respect "reduce motion": neutralise non-essential animation/transition (theme
-   crossfade, skeleton pulse, the top-progress trickle, hover lifts) for users
-   who ask for it, while leaving instant state changes intact. Honours BOTH the
-   OS setting (prefers-reduced-motion) and the in-app override
-   (Appearance → Motion → Reduced, which sets data-motion="reduce"). */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
   }
 }
-html[data-motion="reduce"] *,
-html[data-motion="reduce"] *::before,
-html[data-motion="reduce"] *::after {
-  animation-duration: 0.001ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.001ms !important;
-  scroll-behavior: auto !important;
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-paper);
+  /* faint pixel grid + CRT scanlines layered over the dark base */
+  background-image:
+    linear-gradient(rgba(245, 239, 226, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 239, 226, 0.04) 1px, transparent 1px),
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.18) 0px,
+      rgba(0, 0, 0, 0.18) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  background-size:
+    26px 26px,
+    26px 26px,
+    100% 3px;
+}
+
+/* Pixel sprites stay crisp when scaled. */
+img.pixelated,
+.pixelated {
+  image-rendering: pixelated;
+}
+
+/* Visible keyboard focus - never removed. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-sky);
+  outline-offset: 3px;
+}
+
+@layer components {
+  /* - Signature card: hard cream border + cream offset shadow on dark - */
+  .pixel-card {
+    background: var(--color-panel);
+    border: 3px solid var(--color-paper);
+    border-radius: 0;
+    box-shadow: var(--shadow-pix);
+  }
+  .pixel-card-lg {
+    border: 3px solid var(--color-paper);
+    border-radius: 0;
+    box-shadow: var(--shadow-pix-lg);
+  }
+
+  .pixel-hover {
+    transition:
+      transform 0.14s var(--ease-out-strong),
+      box-shadow 0.14s var(--ease-out-strong);
+  }
+  /* hover lift only on devices that really hover - taps don't false-trigger */
+  @media (hover: hover) and (pointer: fine) {
+    .pixel-hover:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: var(--shadow-pix-lg);
+    }
+  }
+  /* press feedback: the card sinks toward its shadow */
+  .pixel-hover:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 0 var(--color-paper);
+  }
+
+  /* - Buttons - name says exactly what happens - */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    padding: 0.95rem 1.5rem;
+    border: 3px solid var(--color-paper);
+    border-radius: 0;
+    box-shadow: var(--shadow-pix);
+    transition:
+      transform 0.12s var(--ease-out-strong),
+      box-shadow 0.12s var(--ease-out-strong);
+    cursor: pointer;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: var(--shadow-pix-lg);
+    }
+  }
+  .btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 0 0 0 0 var(--color-paper);
+  }
+  /* In-flight / disabled (e.g. a submitting form button): read as inactive —
+     dim it, drop the hover-lift affordance, and show a not-allowed cursor so the
+     label change ("Sending…") isn't the only signal. */
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: var(--shadow-pix);
+  }
+  .btn-blue {
+    background: var(--color-blue);
+    color: #fff;
+  }
+  .btn-yellow {
+    background: var(--color-yellow);
+    color: var(--color-ink);
+  }
+  .btn-pink {
+    background: var(--color-pink);
+    color: #fff;
+  }
+  .btn-mint {
+    background: var(--color-mint);
+    color: var(--color-ink);
+  }
+  .btn-ghost {
+    background: var(--color-panel);
+    color: var(--color-paper);
+  }
+  .btn-void {
+    background: var(--color-void);
+    color: var(--color-paper);
+  }
+
+  /* - "Press start" arcade ring - composes with a colour variant - */
+  .btn-start {
+    border-width: 4px;
+    padding: 1.05rem 1.9rem;
+    box-shadow:
+      0 0 0 4px var(--color-void),
+      8px 8px 0 4px var(--color-paper);
+  }
+
+  /* - Notched "low-res" corners - */
+  .pixel-corners {
+    clip-path: polygon(
+      0 8px, 4px 8px, 4px 4px, 8px 4px, 8px 0,
+      calc(100% - 8px) 0, calc(100% - 8px) 4px, calc(100% - 4px) 4px,
+      calc(100% - 4px) 8px, 100% 8px,
+      100% calc(100% - 8px), calc(100% - 4px) calc(100% - 8px),
+      calc(100% - 4px) calc(100% - 4px), calc(100% - 8px) calc(100% - 4px),
+      calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 4px),
+      4px calc(100% - 4px), 4px calc(100% - 8px), 0 calc(100% - 8px)
+    );
+  }
+
+  /* - Tag / chip - */
+  .pixel-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.28rem 0.6rem;
+    border: 2px solid var(--color-paper);
+    background: var(--color-panel);
+    color: var(--color-paper);
+  }
+
+  /* - Form input - */
+  .pixel-input {
+    width: 100%;
+    background: var(--color-void);
+    border: 3px solid var(--color-paper);
+    border-radius: 0;
+    padding: 0.7rem 0.85rem;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    color: var(--color-paper);
+    caret-color: var(--color-sky);
+    box-shadow: inset 2px 2px 0 0 rgba(0, 0, 0, 0.4);
+    transition:
+      border-color 0.15s var(--ease-out-strong),
+      background-color 0.15s var(--ease-out-strong);
+  }
+  .pixel-input::placeholder {
+    color: rgba(245, 239, 226, 0.4);
+  }
+  .pixel-input:focus {
+    outline: 3px solid var(--color-sky);
+    outline-offset: 2px;
+    border-color: var(--color-sky);
+    background: var(--color-panel);
+  }
+  /* Safari/iOS draw native <select> chrome (system chevron + grey gradient) that
+     ignores .pixel-input. Flatten it and paint our own paper chevron. Grouped
+     with :focus so the focus background-swap above can't drop the chevron. */
+  select.pixel-input,
+  select.pixel-input:focus {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 2.4rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23f5efe2' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    background-size: 0.9rem;
+  }
+
+  /* - Section eyebrow label - */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--color-sky);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+    /* Silkscreen is a chunky bitmap face - tighten the leading so the big
+       stacked headlines lock together, and nudge tracking for legibility. */
+    line-height: 1.04;
+    letter-spacing: -0.01em;
+    word-spacing: -0.08em;
+  }
+  .font-body {
+    font-family: var(--font-body);
+  }
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* - Extruded 3D pixel headline (stacked hard shadows) - */
+  .text-3d {
+    text-shadow:
+      2px 2px 0 var(--color-ink),
+      4px 4px 0 var(--color-ink),
+      6px 6px 0 rgba(0, 0, 0, 0.45);
+  }
+  .text-3d-blue {
+    color: var(--color-paper);
+    text-shadow:
+      3px 3px 0 var(--color-blue),
+      6px 6px 0 var(--color-ink);
+  }
+  .text-3d-pink {
+    color: var(--color-yellow);
+    text-shadow:
+      3px 3px 0 var(--color-pink),
+      6px 6px 0 var(--color-ink);
+  }
+
+  /* - Hazard stripes - */
+  .stripes {
+    background-image: repeating-linear-gradient(
+      45deg,
+      var(--color-paper) 0,
+      var(--color-paper) 8px,
+      transparent 8px,
+      transparent 16px
+    );
+  }
+
+  /* - Jagged pixel-skyline divider (Tamagotchi-style section edge) - */
+  .skyline {
+    height: 18px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='18'%3E%3Cg fill='%23f5efe2'%3E%3Crect x='0' y='9' width='6' height='9'/%3E%3Crect x='6' y='4' width='6' height='14'/%3E%3Crect x='12' y='11' width='6' height='7'/%3E%3Crect x='18' y='0' width='6' height='18'/%3E%3Crect x='24' y='7' width='6' height='11'/%3E%3Crect x='30' y='3' width='6' height='15'/%3E%3Crect x='36' y='10' width='6' height='8'/%3E%3Crect x='42' y='5' width='6' height='13'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    background-size: 48px 18px;
+    image-rendering: pixelated;
+  }
+  .skyline-flip {
+    transform: scaleY(-1);
+  }
+
+  /* - Banner spikes: pink teeth that grow UP out of the banner's top edge,
+       projecting outside the container with transparent gaps between them. - */
+  .banner-spikes {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 28px;
+    margin-bottom: -1px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='28'%3E%3Cg fill='%23ffffff'%3E%3Crect x='0' y='14' width='6' height='14'/%3E%3Crect x='6' y='6' width='6' height='22'/%3E%3Crect x='12' y='17' width='6' height='11'/%3E%3Crect x='18' y='0' width='6' height='28'/%3E%3Crect x='24' y='11' width='6' height='17'/%3E%3Crect x='30' y='4' width='6' height='24'/%3E%3Crect x='36' y='15' width='6' height='13'/%3E%3Crect x='42' y='8' width='6' height='20'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    background-position: bottom;
+    background-size: 48px 28px;
+    image-rendering: pixelated;
+  }
+
+  /* - Staggered card reveal: children rise in one after another on mount.
+       Short 50ms steps per emil-design-eng - decorative, never blocks input. - */
+  .stagger > * {
+    animation: rise-in 0.45s var(--ease-out-strong) both;
+  }
+  .stagger > *:nth-child(2) {
+    animation-delay: 50ms;
+  }
+  .stagger > *:nth-child(3) {
+    animation-delay: 100ms;
+  }
+  .stagger > *:nth-child(4) {
+    animation-delay: 150ms;
+  }
+  .stagger > *:nth-child(5) {
+    animation-delay: 200ms;
+  }
+  .stagger > *:nth-child(6) {
+    animation-delay: 250ms;
+  }
+  .stagger > *:nth-child(7) {
+    animation-delay: 300ms;
+  }
+  .stagger > *:nth-child(8) {
+    animation-delay: 350ms;
+  }
+  .stagger > *:nth-child(n + 9) {
+    animation-delay: 400ms;
+  }
+
+  /* - Modal entrance: overlay fades, panel scales from 0.96 (never from 0) - */
+  .modal-overlay {
+    animation: fade-in 0.15s ease-out both;
+  }
+  .modal-panel {
+    animation: modal-in 0.2s var(--ease-out-strong) both;
+  }
+
+  /* - Mobile menu drop-down - */
+  .menu-drop {
+    animation: menu-drop 0.18s var(--ease-out-strong) both;
+  }
+
+  /* - Footer / list link: colour change + tiny slide on hover - */
+  .slide-link {
+    display: inline-block;
+    transition:
+      color 0.15s ease,
+      transform 0.15s var(--ease-out-strong);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .slide-link:hover {
+      transform: translateX(3px);
+    }
+  }
+
+  .caret::after {
+    content: "▮";
+    margin-left: 0.1em;
+    animation: blink 1s steps(1) infinite;
+    color: var(--color-mint);
+  }
+
+  /* - Twinkling pixel sparkle - */
+  .twinkle {
+    animation: twinkle 2.4s steps(2) infinite;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+@keyframes menu-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+@keyframes float-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.animate-bob {
+  animation: float-bob 3.2s ease-in-out infinite;
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-33.333%);
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise {
+  animation: rise-in 0.6s var(--ease-pop) both;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-pop {
+  animation: pop-in 0.55s var(--ease-pop) both;
+}
+
+/* - Pixel page transition (cover -> navigate -> reveal). Modelled on the old
+   site: a full-screen grid of solid pink blocks that snap on/off (opacity, not
+   scale) on a scattered per-block stagger, so the pixels blast IN to cover the
+   screen before the route changes, then blast OUT to reveal the new page. The
+   grid template + per-block delay are set inline by the component. Collapses to
+   ~0ms under prefers-reduced-motion via the global rule above. */
+.page-transition {
+  position: relative;
+}
+.pixel-shatter {
+  position: fixed;
+  inset: 0;
+  /* above everything, including the sticky header (z-50) and its mobile menu */
+  z-index: 100;
+  pointer-events: none;
+  display: grid;
+  overflow: hidden;
+}
+.pixel-shard-in,
+.pixel-shard-out {
+  background: var(--color-pink);
+}
+.pixel-shard-in {
+  animation: pixel-shard-in 0.06s steps(1, end) both;
+}
+.pixel-shard-out {
+  animation: pixel-shard-out 0.06s steps(1, end) both;
+}
+@keyframes pixel-shard-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pixel-shard-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
