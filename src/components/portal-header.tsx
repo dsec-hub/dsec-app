@@ -11,7 +11,7 @@ import { nav, site } from "@/lib/content";
  * Mirrors dsec-website's SiteHeader exactly — same chrome, same nav links, same
  * Sign in / Join CTAs — so crossing from dsec.club to the portal is seamless.
  * The nav points to the public site (absolute, same tab); the only difference is
- * the auth cluster: a member sees their email + Sign out instead of Sign in/Join.
+ * the auth cluster: a signed-in member sees Dashboard + Sign out instead of Sign in/Join.
  * `email` is resolved server-side in the root layout (this is a client component
  * for the mobile menu toggle).
  */
@@ -41,11 +41,16 @@ export function PortalHeader({ email }: { email: string | null }) {
             </a>
           ))}
           {email ? (
-            <form action={signOutAction} className="ml-3">
-              <button type="submit" className="btn btn-ghost !py-2.5 !text-sm">
-                Sign out
-              </button>
-            </form>
+            <>
+              <form action={signOutAction} className="ml-3">
+                <button type="submit" className="btn btn-ghost !py-2.5 !text-sm">
+                  Sign out
+                </button>
+              </form>
+              <Link href="/dashboard" className="btn btn-pink !py-2.5 !text-sm">
+                Dashboard
+              </Link>
+            </>
           ) : (
             <>
               <Link href="/login" className="btn btn-ghost ml-3 !py-2.5 !text-sm">
@@ -83,11 +88,16 @@ export function PortalHeader({ email }: { email: string | null }) {
               </a>
             ))}
             {email ? (
-              <form action={signOutAction} className="mt-2">
-                <button type="submit" className="btn btn-ghost w-full justify-center">
-                  Sign out
-                </button>
-              </form>
+              <>
+                <Link href="/dashboard" onClick={() => setOpen(false)} className="btn btn-pink mt-2 justify-center">
+                  Dashboard
+                </Link>
+                <form action={signOutAction} className="mt-2">
+                  <button type="submit" className="btn btn-ghost w-full justify-center">
+                    Sign out
+                  </button>
+                </form>
+              </>
             ) : (
               <>
                 <Link href="/login" onClick={() => setOpen(false)} className="btn btn-ghost mt-2 justify-center">

@@ -49,12 +49,19 @@ export default async function DashboardPage() {
           qrSvg={verification?.qrSvg ?? null}
         />
         {!verified && (
-          <p className="mt-3 text-sm text-paper/70">
-            Full access during your trial — we confirm after each Friday&apos;s DUSA update.{" "}
-            <Link href="/assistance" className="font-bold text-sky underline-offset-2 hover:underline">
-              Membership help
-            </Link>
-          </p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-paper/70">
+              Full access during your trial — we confirm after each Friday&apos;s DUSA update.{" "}
+              <Link href="/assistance" className="font-bold text-sky underline-offset-2 hover:underline">
+                Membership help
+              </Link>
+            </p>
+            {/* Not a confirmed member yet (trial / no DUSA membership) — the Join CTA
+                lives here now instead of the navbar, where it nudges conversion. */}
+            <a href={`${site.website}/join`} className="btn btn-pink shrink-0 !py-2.5 !text-sm">
+              Join DSEC
+            </a>
+          </div>
         )}
       </section>
 
