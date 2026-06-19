@@ -1,0 +1,72 @@
+import Link from "next/link";
+
+import { PixelDuck, type DuckName } from "@/components/pixel-duck";
+
+function LockIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="10" width="16" height="10" rx="1" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+export type FeatureTileProps = {
+  title: string;
+  blurb: string;
+  duck: DuckName;
+  /** Locked = members-only / coming-soon: dimmed, non-interactive, lock badge. */
+  locked?: boolean;
+  badge?: string;
+  href?: string;
+  /** Render `href` as a plain external anchor (new tab) rather than a Link. */
+  external?: boolean;
+};
+
+/**
+ * A dashboard feature card. Most tiles are `locked` for now — the portal shell
+ * is intentionally "lots of locked signs" until each perk is wired up. Live
+ * tiles pass an `href` (internal Link, or `external`) and omit `locked`.
+ */
+export function FeatureTile({ title, blurb, duck, locked, badge, href, external }: FeatureTileProps) {
+  const inner = (
+    <>
+      <div className="flex items-start justify-between">
+        <PixelDuck name={duck} alt="" size={56} />
+        {locked ? (
+          <span className="inline-flex items-center gap-1 text-paper/45" title="Members-only — coming soon">
+            <LockIcon />
+          </span>
+        ) : null}
+      </div>
+      <h3 className="mt-3 font-display text-lg font-bold">{title}</h3>
+      <p className="mt-2 text-sm text-paper/70">{blurb}</p>
+      <span className="pixel-tag mt-4">{badge ?? (locked ? "Members-only · soon" : "Open")}</span>
+    </>
+  );
+
+  if (locked || !href) {
+    return (
+      <div
+        className="pixel-card p-5 opacity-65 cursor-not-allowed"
+        aria-disabled="true"
+      >
+        {inner}
+      </div>
+    );
+  }
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer noopener" className="pixel-card pixel-hover block p-5">
+        {inner}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={href} className="pixel-card pixel-hover block p-5">
+      {inner}
+    </Link>
+  );
+}

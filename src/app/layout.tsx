@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Silkscreen, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { auth } from "@/auth";
 import { PortalHeader } from "@/components/portal-header";
 import { PortalFooter } from "@/components/portal-footer";
 
@@ -36,11 +37,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
   return (
     <html
       lang="en-AU"
@@ -53,7 +55,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <PortalHeader />
+        <PortalHeader email={session?.user?.email ?? null} />
         <main id="main" className="flex-1">
           {children}
         </main>
