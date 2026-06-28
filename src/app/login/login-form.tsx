@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { OtpInput } from "@/components/otp-input";
 import { loginAction, type LoginState } from "./actions";
 
-export function LoginForm() {
+export function LoginForm({ callbackUrl }: { callbackUrl?: string | null }) {
   const [state, formAction, pending] = useActionState<LoginState | undefined, FormData>(
     loginAction,
     undefined,
@@ -17,6 +17,7 @@ export function LoginForm() {
     return (
       <form key="code" action={formAction} className="flex flex-col gap-4">
         <input type="hidden" name="email" value={email} />
+        {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
         <div>
           <p className="text-sm text-paper/80">
             Enter the 6-digit code we emailed to{" "}
@@ -51,6 +52,7 @@ export function LoginForm() {
 
   return (
     <form key="email" action={formAction} className="flex flex-col gap-4">
+      {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
       <label className="flex flex-col gap-1.5">
         <span className="font-mono text-xs uppercase tracking-wide text-paper/60">Email</span>
         <input

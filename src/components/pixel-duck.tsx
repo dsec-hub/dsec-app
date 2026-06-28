@@ -22,6 +22,12 @@ export type DuckName =
 
 /**
  * Fixed-size sprite - use for 2-column scenes, mascots and icons.
+ *
+ * By default the sprite keeps its natural aspect ratio (`width: size`,
+ * `height: auto`), so different sprites end up different heights. Pass `square`
+ * to lock it into a `size`×`size` box and `object-contain` the artwork — use
+ * this when several sprites sit in a row (e.g. dashboard tiles) and must share
+ * an identical footprint. Contain never distorts; it just letterboxes.
  */
 export function PixelDuck({
   name,
@@ -30,6 +36,7 @@ export function PixelDuck({
   className = "",
   priority = false,
   bob = false,
+  square = false,
 }: {
   name: DuckName;
   alt: string;
@@ -37,6 +44,7 @@ export function PixelDuck({
   className?: string;
   priority?: boolean;
   bob?: boolean;
+  square?: boolean;
 }) {
   return (
     <Image
@@ -46,7 +54,7 @@ export function PixelDuck({
       height={size}
       priority={priority}
       className={`pixelated select-none ${bob ? "animate-bob" : ""} ${className}`}
-      style={{ width: size, height: "auto" }}
+      style={square ? { width: size, height: size, objectFit: "contain" } : { width: size, height: "auto" }}
     />
   );
 }

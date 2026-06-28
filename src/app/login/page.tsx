@@ -4,14 +4,24 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { site } from "@/lib/content";
+import { sanitizeCallbackUrl } from "@/lib/login-redirect";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  // A player sent here from games.dsec.club carries ?callbackUrl=<games URL>; we
+  // validate it and hand it through the form so login drops them back there.
+  const cbRaw = (await searchParams).callbackUrl;
+  const callbackUrl = sanitizeCallbackUrl(Array.isArray(cbRaw) ? cbRaw[0] : cbRaw);
+
   // Belt-and-suspenders: the proxy already bounces signed-in users off /login.
   const session = await auth();
-  if (session?.user) redirect("/");
+  if (session?.user) redirect(callbackUrl ?? "/");
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
@@ -53,7 +63,7 @@ export default async function LoginPage() {
             </div>
 
             <div className="mt-6">
-              <LoginForm />
+              <LoginForm callbackUrl={callbackUrl} />
             </div>
 
             <p className="mt-5 text-center font-mono text-xs text-paper/55">

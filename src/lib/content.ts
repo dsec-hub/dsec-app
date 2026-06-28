@@ -13,6 +13,9 @@ export const site = {
   // the navbar can read it), so local dev can point the DSEC links at a local
   // website. Falls back to production.
   website: process.env.NEXT_PUBLIC_WEBSITE_URL || "https://dsec.club",
+  // Games surface (games.dsec.club). Same env pattern as `website` so local dev
+  // can point at the locally running dsec-games app. Falls back to production.
+  games: process.env.NEXT_PUBLIC_GAMES_URL || "https://games.dsec.club",
   // Where students BUY membership (Deakin students only). The portal points here
   // for anyone who isn't a member yet, and members must sign in with the email
   // they used on this page.

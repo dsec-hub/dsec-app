@@ -80,6 +80,16 @@ export default async function DashboardPage() {
             badge="Open"
           />
 
+          {/* Games — live (links out to the games surface, games.dsec.club). */}
+          <FeatureTile
+            title="Games"
+            duck="duck-trophy"
+            blurb="Play Flappy Duck and Codle, climb the leaderboard, win the monthly skill draw."
+            href={site.games}
+            external
+            badge="Play"
+          />
+
           <FeatureTile
             title="Open-Source Projects"
             duck="duck-laptop"

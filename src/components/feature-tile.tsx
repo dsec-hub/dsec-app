@@ -27,28 +27,48 @@ export type FeatureTileProps = {
  * A dashboard feature card. Most tiles are `locked` for now — the portal shell
  * is intentionally "lots of locked signs" until each perk is wired up. Live
  * tiles pass an `href` (internal Link, or `external`) and omit `locked`.
+ *
+ * The bottom affordance carries the hierarchy: live tiles get a loud filled-pink
+ * CTA with a nudging arrow (the whole card is the link, so this is a visual cue,
+ * not a nested control); locked tiles get a quiet ghost status pill that reads as
+ * a label, never a disabled button. Both pin to a shared baseline so the row of
+ * CTAs lines up regardless of blurb length.
  */
 export function FeatureTile({ title, blurb, duck, locked, badge, href, external }: FeatureTileProps) {
+  const isLocked = locked || !href;
+
   const inner = (
     <>
       <div className="flex items-start justify-between">
-        <PixelDuck name={duck} alt="" size={56} />
-        {locked ? (
-          <span className="inline-flex items-center gap-1 text-paper/45" title="Members-only — coming soon">
+        <PixelDuck name={duck} alt="" size={56} square />
+        {isLocked ? (
+          <span className="inline-flex items-center text-paper/45" title="Members-only — coming soon">
             <LockIcon />
           </span>
         ) : null}
       </div>
       <h3 className="mt-3 font-display text-lg font-bold">{title}</h3>
       <p className="mt-2 text-sm text-paper/70">{blurb}</p>
-      <span className="pixel-tag mt-4">{badge ?? (locked ? "Members-only · soon" : "Open")}</span>
+
+      {isLocked ? (
+        <span className="mt-auto inline-flex w-fit items-center gap-1.5 border-2 border-paper/25 px-3 pb-1.5 pt-2 font-mono text-[0.7rem] font-bold uppercase leading-none tracking-[0.08em] text-paper/75">
+          {badge ?? "Members-only · Soon"}
+        </span>
+      ) : (
+        <span className="mt-auto inline-flex w-fit items-center gap-2 border-2 border-pink bg-pink px-3.5 pb-1.5 pt-2 font-mono text-[0.7rem] font-bold uppercase leading-none tracking-[0.08em] text-white">
+          {badge ?? "Open"}
+          <span aria-hidden className="text-sm transition-transform duration-150 ease-out group-hover:translate-x-1">
+            →
+          </span>
+        </span>
+      )}
     </>
   );
 
-  if (locked || !href) {
+  if (isLocked) {
     return (
       <div
-        className="pixel-card p-5 opacity-65 cursor-not-allowed"
+        className="pixel-card flex h-full flex-col p-5 opacity-65 cursor-not-allowed"
         aria-disabled="true"
       >
         {inner}
@@ -58,14 +78,19 @@ export function FeatureTile({ title, blurb, duck, locked, badge, href, external 
 
   if (external) {
     return (
-      <a href={href} target="_blank" rel="noreferrer noopener" className="pixel-card pixel-hover block p-5">
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="pixel-card pixel-hover group flex h-full flex-col p-5"
+      >
         {inner}
       </a>
     );
   }
 
   return (
-    <Link href={href} className="pixel-card pixel-hover block p-5">
+    <Link href={href} className="pixel-card pixel-hover group flex h-full flex-col p-5">
       {inner}
     </Link>
   );

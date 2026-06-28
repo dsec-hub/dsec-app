@@ -4,6 +4,7 @@ import { AuthError } from "next-auth";
 
 import { signIn } from "@/auth";
 import { issueLoginCode } from "@/lib/login-code";
+import { sanitizeCallbackUrl } from "@/lib/login-redirect";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -44,8 +45,11 @@ export async function loginAction(
   if (!/^\d{6}$/.test(code)) {
     return { step: "code", email, error: "Enter the 6-digit code we emailed you." };
   }
+  // Carried from the games site via a hidden field; null unless trusted. The
+  // NextAuth `redirect` callback re-validates it before honouring it.
+  const callbackUrl = sanitizeCallbackUrl(formData.get("callbackUrl"));
   try {
-    await signIn("credentials", { email, code, redirectTo: "/" });
+    await signIn("credentials", { email, code, redirectTo: callbackUrl ?? "/" });
   } catch (err) {
     // NextAuth throws a redirect on success (must propagate); AuthError = bad code.
     if (err instanceof AuthError) {
