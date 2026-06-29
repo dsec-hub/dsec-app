@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Silkscreen, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { auth } from "@/auth";
+import { getSocials } from "@/lib/api";
 import { PortalHeader } from "@/components/portal-header";
 import { PortalFooter } from "@/components/portal-footer";
 
@@ -42,7 +43,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  // Socials feed the footer's "Connect" column (one source of truth, shared
+  // with the public site via the dsec-api link-tree feed).
+  const [session, socials] = await Promise.all([auth(), getSocials()]);
   return (
     <html
       lang="en-AU"
@@ -59,7 +62,7 @@ export default async function RootLayout({
         <main id="main" className="flex-1">
           {children}
         </main>
-        <PortalFooter />
+        <PortalFooter socials={socials} />
       </body>
     </html>
   );

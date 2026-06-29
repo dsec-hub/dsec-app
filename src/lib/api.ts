@@ -8,6 +8,8 @@
  * bad status) so the UI can show a friendly fallback instead of crashing.
  */
 
+import { resolveSocials, type Socials } from "@/lib/content";
+
 export type PortalEvent = {
   slug: string;
   title: string;
@@ -120,6 +122,34 @@ export async function verifyMemberCode(code: string): Promise<VerifyResult | nul
       console.warn(`[dsec-api] verify/${code} failed: ${(err as Error).message}`);
     }
     return null;
+  }
+}
+
+/**
+ * The club's resolved socials for the portal footer. Reads the public link-tree
+ * feed (same source as the website + /links page) and merges the live values
+ * with the hardcoded `site.*` fallback, so the footer always shows whatever real
+ * handles exist — even if the API is unreachable.
+ */
+export async function getSocials(): Promise<Socials> {
+  const base = apiBase();
+  if (!base) return resolveSocials(undefined);
+  try {
+    // 5-min cache; socials change rarely and the feed is public.
+    const res = await fetch(`${base}/website/linktree`, { next: { revalidate: 300 } });
+    if (!res.ok) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[dsec-api] GET /website/linktree → ${res.status}`);
+      }
+      return resolveSocials(undefined);
+    }
+    const j = await res.json();
+    return resolveSocials(j?.profile?.socials ?? undefined);
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(`[dsec-api] GET /website/linktree failed: ${(err as Error).message}`);
+    }
+    return resolveSocials(undefined);
   }
 }
 

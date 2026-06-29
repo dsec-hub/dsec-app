@@ -80,7 +80,7 @@ export default async function DashboardPage() {
             badge="Open"
           />
 
-          {/* Games — live (links out to the games surface, games.dsec.club). */}
+          {/* Games — TEMPORARILY LOCKED. To re-enable, restore the live tile below:
           <FeatureTile
             title="Games"
             duck="duck-trophy"
@@ -88,6 +88,13 @@ export default async function DashboardPage() {
             href={site.games}
             external
             badge="Play"
+          /> */}
+          <FeatureTile
+            title="Games"
+            duck="duck-trophy"
+            blurb="Play Flappy Duck and Codle, climb the leaderboard, win the monthly skill draw."
+            locked
+            badge="Soon"
           />
 
           <FeatureTile
