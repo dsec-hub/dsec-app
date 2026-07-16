@@ -22,13 +22,12 @@ membership) come next.
 ## Develop
 
 ```bash
-cd dsec-app
 npm install
 npm run dev          # http://localhost:3001
 ```
 
 Copy `.env.example` → `.env.local` and fill in `DATABASE_URL` + `DSEC_API_URL`
-(or run the whole stack with `../dev.sh`).
+(for the dependent services, see [`CROSS_REPOSITORY.md`](./CROSS_REPOSITORY.md)).
 
 ## Ports (local)
 
