@@ -20,7 +20,7 @@ export const site = {
   // for anyone who isn't a member yet, and members must sign in with the email
   // they used on this page.
   dusa: "https://www.dusa.org.au/clubs/deakin-software-engineering-club-dsec",
-  discord: "https://discord.gg/REPLACE-permanent-invite", // PLACEHOLDER
+  discord: "https://discord.gg/5dyzUvAfwE", // fallback only — the hub-served socials.discord wins
   github: "https://github.com/dsec-hub",
   linkedin: "https://www.linkedin.com/company/REPLACE", // PLACEHOLDER
   instagram: "https://instagram.com/REPLACE", // PLACEHOLDER
