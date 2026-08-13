@@ -6,7 +6,8 @@
   `DSEC_API_KEY` only for server-side API operations.
 - `dsec-games` reads this application's Auth.js session. Both applications must
   use the same `AUTH_SECRET` and production `AUTH_COOKIE_DOMAIN=.dsec.club`.
-- Keep `NEXT_PUBLIC_PORTAL_URL` set to `https://app.dsec.club` so games login
+- Keep `NEXT_PUBLIC_PORTAL_URL` set to `https://app.dsec.club` **in the
+  `dsec-games` project** (this repo does not read that variable) so games login
   redirects return to this portal.
 
 Deploy after `dsec-api`; coordinate authentication configuration with

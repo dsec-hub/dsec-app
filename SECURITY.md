@@ -1,138 +1,61 @@
-# DSEC — Rate Limiting & DDoS / Abuse Protection
+# Security policy — dsec-app
 
-Defence in layers. No single layer stops everything, so each domain
-(`dsec.club`, `app.dsec.club`, `api.dsec.club`) sits behind all of them.
+## Reporting a vulnerability
 
-```
-            ┌─────────────────────────────────────────────────────┐
- Internet → │ 1. Cloudflare DNS (authoritative, not proxied)       │  ← grey-cloud / DNS only
-            ├─────────────────────────────────────────────────────┤
-            │ 2. Vercel Firewall (platform DDoS + custom rules)    │  ← blocks volumetric DDoS (the edge)
-            ├─────────────────────────────────────────────────────┤
-            │ 3. App code (Upstash per-IP + login throttle)        │  ← scripting / brute-force
-            │    dsec-api: per-key + per-IP + daily LLM caps (Neon) │
-            └─────────────────────────────────────────────────────┘
-```
+Email **admin@dsec.club** with "SECURITY" in the subject. Please do not open a
+public issue for anything exploitable.
 
-> **Why layers:** a true volumetric DDoS *cannot* be stopped in application
-> code — by the time your function runs, you've already paid for the request
-> (and, for `dsec-api`, touched Neon). Floods must die at the **edge** — which
-> here is **Vercel Firewall (layer 2)**, since the Vercel records are grey-cloud
-> (DNS-only) in Cloudflare and Cloudflare's proxied edge protections therefore
-> don't sit in front of the apps (see Layer 1). App code (layer 3) is for what
-> the edge is bad at: credential stuffing on the login form and scripted
-> hammering of an authenticated session.
+Useful things to include: the URL or endpoint, what you did, what happened, and
+whether you needed an account. We will acknowledge and keep you posted on a fix.
+This is a student club, not a company with an on-call rota, so treat response
+times as best-effort.
 
----
+## Scope of this document
 
-## Layer 3 — Application code (DONE, in this repo)
+This file covers **dsec-app only** — the member portal at `app.dsec.club`. The
+public site (`dsec-website`), the committee dashboard (`dsec-hub`), the games
+surface (`dsec-games`) and the API (`dsec-api`) each have their own repository
+and their own security notes.
 
-### dsec-app (Next.js)
+## What this app does
 
-Implemented and live as soon as the Upstash env vars are set:
+The portal authenticates members with a one-time emailed code (Auth.js v5,
+Credentials provider) and connects directly to the shared Neon Postgres
+database.
 
-| What | Where | Limit |
+| Control | Where | Notes |
 |---|---|---|
-| Per-IP throttle on every page/route | `src/proxy.ts` → `src/lib/rate-limit.ts` | 120 req / 60 s / IP |
-| Login brute-force / credential stuffing | `src/auth.ts` `authorize()` | 8 attempts / 60 s / (IP + email) |
+| Session auth + route gating | `src/auth.ts`, `src/auth.config.ts`, `src/proxy.ts` | Auth.js v5. The proxy matcher excludes `/api`. |
+| Login codes are peppered before storage | `src/lib/login-code.ts` | HMAC keyed on `AUTH_SECRET`. **If `AUTH_SECRET` is unset the key degrades to an empty string**, which defeats the property that a database leak cannot reverse the codes. Always set it. |
+| Post-login redirect allowlist | `src/lib/login-redirect.ts` | Relative paths and allowlisted sibling origins only, so `?callbackUrl=` is not an open redirect. The allowlist is built from `NEXT_PUBLIC_GAMES_URL` and `AUTH_URL`. |
+| Cross-subdomain session | `AUTH_COOKIE_DOMAIN` | Set to `.dsec.club` in production, and to the same value in `dsec-games`, with a matching `AUTH_SECRET`. |
 
-- State lives in **Upstash Redis** — the only store that counts accurately
-  across Vercel's many short-lived function instances.
-- **Fails open:** if `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are
-  unset, nothing is throttled (so local dev and the current prod keep working
-  until you wire Upstash up). Set them in production.
-- Login excludes the proxy matcher (`/api/auth/*`), which is why the throttle
-  lives inside `authorize()` instead.
+### Known gaps in this repo
 
-### dsec-api (FastAPI) — already had this
+- There is **no application-level rate limiting and no login throttle** in this
+  repo. There is no Upstash dependency and no `src/lib/rate-limit.ts`. An earlier
+  version of this document claimed both existed here; they exist in `dsec-hub`.
+  Brute-force protection for this portal is currently edge-only.
+- `next-auth` is pinned to a pre-release (`5.0.0-beta.31`) with a caret range, so
+  an unpinned install can move the auth layer. See the repo's open security
+  advisories before upgrading.
 
-`app/core/ratelimit.py` (`NeonRateLimiter`) enforces, per authed route:
-per-key/min, per-IP/min, per-key daily `trigger` cap, and a global daily LLM
-cap. Tunables in `app/config.py` (`RATE_LIMIT_*`, `GLOBAL_DAILY_LLM_CAP`,
-`MAX_REQUEST_BYTES`). No change needed; the edge layers below cover the gaps
-(e.g. `/health`) without adding a per-request Neon write.
+## Environment variables that are security-relevant
 
----
+`AUTH_SECRET` (required — signs sessions and peppers login codes), `AUTH_URL`
+(must be the real production origin; it feeds the redirect allowlist),
+`AUTH_TRUST_HOST` (required behind Vercel's proxy), `AUTH_COOKIE_DOMAIN`,
+`DATABASE_URL`, and `DSEC_API_KEY` (server-only, never exposed to the browser).
 
-## Layer 1 — Cloudflare (DNS — already set up)
+## Edge protection
 
-Cloudflare is the **authoritative DNS** for all three domains; the nameservers
-**already point to Cloudflare** (see [`HOSTING.md`](./HOSTING.md) → Stage 5) and
-**must not be moved** — Hostinger only hosts the mailboxes. There is no nameserver
-migration to do.
+The `app.dsec.club` DNS record is grey-cloud (DNS-only) in Cloudflare, so
+Cloudflare's proxied protections — WAF rules, rate-limiting rules, Bot Fight
+Mode — are **not** in the request path. Edge mitigation is whatever the Vercel
+project's Firewall settings provide. Given there is no in-app throttle, a custom
+Firewall rule on `/api/auth/*` is worth configuring.
 
-Per HOSTING.md (authoritative), the Vercel web records (`@`, `www`, `app`, `api`)
-are **grey-cloud / "DNS only"**, *not* proxied (orange). Proxying Cloudflare in
-front of Vercel breaks cert issuance / domain verification and can cause redirect
-loops, so the records stay grey-cloud and **Vercel serves TLS directly**.
-
-> ⚠️ **Consequence:** because the Vercel records are grey-cloud, Cloudflare is
-> **not in the request path** for the apps — it only answers DNS. Cloudflare's
-> proxied-only protections (**WAF custom rules**, **Rate limiting rules**, **Bot
-> Fight Mode**, the SSL/TLS proxy mode) therefore **do not apply** to the Vercel
-> apps. Edge DDoS/abuse mitigation for them is carried by **Vercel Firewall
-> (Layer 2)** plus the app code (Layer 3).
-
-What Cloudflare *does* contribute without proxying:
-
-1. **Authoritative DNS** — already configured. Keep the Vercel web records
-   **DNS only (grey cloud)** and leave the Hostinger `MX` / SPF / DKIM / DMARC
-   records in place (also grey). All records are edited in the Cloudflare dashboard.
-2. **Turnstile** (optional, recommended for the public site) — a free captcha on
-   the sponsor/contact forms. It's a script + token check, so it works regardless
-   of the grey-cloud setting. HOSTING.md lists the `TURNSTILE_*` env vars.
-
-> If you ever wanted Cloudflare's edge WAF / rate-limiting / Bot Fight Mode in
-> front of the apps, you'd have to **proxy** (orange-cloud) the records — which
-> HOSTING.md rules out for Vercel. Use **Vercel Firewall (Layer 2)** for edge
-> rate-limiting instead (it covers `/api/auth` and `api.dsec.club` below).
-
-## Layer 2 — Vercel Firewall (you set this up — no keys)
-
-Native to your hosting, no account/keys needed — and because the Vercel records
-are grey-cloud, this is the **primary edge layer** for the apps (all web traffic
-reaches Vercel directly). For **each** of the 3 Vercel projects:
-
-1. Project → **Firewall**. Vercel's **Attack Challenge Mode** + automatic DDoS
-   mitigation are on by default — confirm they're enabled.
-2. Add **Custom Rules** — this is where the per-path rate limits live (Cloudflare
-   isn't proxying, so it can't do them):
-   - **Rate limit** rule: `100 requests / 60 s` per IP → **Challenge**.
-   - Stricter rule on `app.dsec.club` path `/api/auth/*`: `20 / 60 s` → **Deny**.
-   - On the API project, a rate-limit rule on `api.dsec.club/*` → **Challenge**.
-3. (Hardening) Optionally **deny** direct traffic to the raw `*.vercel.app` origin
-   so the public can only reach each app through its **custom domain**.
-
----
-
-## What I need from you to finish
-
-Provide these and I'll plug them in / verify (or add them yourself in the
-Vercel dashboard env settings for each project):
-
-1. **Upstash** (required for layer 3 to actually throttle):
-   - `UPSTASH_REDIS_REST_URL`
-   - `UPSTASH_REDIS_REST_TOKEN`
-   - Get them free at <https://console.upstash.com> → Create Database (Redis) →
-     REST API section. Add both to the **dsec-app** Vercel project env (Production
-     + Preview) and your local `.env.local`.
-
-2. **Cloudflare** (DNS — already configured): nothing is required to *enable*
-   protection here, because the Vercel records are grey-cloud, so Cloudflare's
-   WAF / rate limiting don't apply (see Layer 1). If you want me to script DNS
-   changes via the API I'll need a **Cloudflare API token** scoped to Zone →
-   *DNS:Edit* for the `dsec.club` zone, plus the **Zone ID** (Cloudflare dashboard
-   → Overview, right sidebar) — otherwise edit records in the dashboard. Optionally
-   enable **Turnstile** on the public forms (`TURNSTILE_*` env vars).
-
-3. **Vercel Firewall** (layer 2): dashboard-only, nothing for me to receive.
-
----
-
-## Tuning the limits
-
-- App per-IP / login limits: edit the `Ratelimit.slidingWindow(...)` calls in
-  `dsec-app/src/lib/rate-limit.ts`.
-- API limits: `dsec-api/app/config.py`.
-- Start conservative (the numbers above suit committee scale) and loosen if you
-  see false-positive 429s for legitimate users.
+> **Migration note.** `api.dsec.club` is moving off Vercel to an OVH VPS, so edge
+> protection for the API becomes a VPS concern rather than a Vercel Firewall one.
+> That does not change this repo, but do not assume the API is still behind the
+> same layer as the portal.
