@@ -67,13 +67,13 @@ export const authConfig = {
     // allowlist (lib/login-redirect) so a player who signed in from games.dsec
     // .club is dropped straight back into the game. Anything else → portal root.
     redirect({ url, baseUrl }) {
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      try {
-        if (new URL(url).origin === baseUrl) return url;
-      } catch {
-        return baseUrl;
-      }
-      return sanitizeCallbackUrl(url) ?? baseUrl;
+      // ONE decision point: everything a caller could land on goes through the
+      // shared sanitiser (lib/login-redirect). A relative path comes back
+      // relative and is made absolute against our own origin; an allowlisted
+      // absolute (the games site) comes back whole; anything else → portal root.
+      const safe = sanitizeCallbackUrl(url);
+      if (safe === null) return baseUrl;
+      return safe.startsWith("/") ? `${baseUrl}${safe}` : safe;
     },
     // Carry the portal account id + email onto the JWT (set in auth.ts on sign-in)…
     jwt({ token }) {
