@@ -24,6 +24,7 @@ export function OnboardingWizard({
   const [preview, setPreview] = useState<string | null>(null);
   const [hasFile, setHasFile] = useState(false);
   const previewRef = useRef<string | null>(null);
+  const savedRef = useRef<HTMLParagraphElement>(null);
 
   const [photoState, uploadAction, uploading] = useActionState<PhotoState, FormData>(
     uploadFacePhoto,
@@ -37,6 +38,22 @@ export function OnboardingWizard({
   // The actually-saved photo (drives the finish gate): the latest successful
   // upload, else whatever was already on the account. Derived — no effect.
   const savedPhotoUrl = (photoState?.ok && photoState.photoUrl) || initialPhotoUrl;
+
+  // Reset hasFile the moment an upload succeeds, so the Upload button re-disables
+  // until a new file is picked. Adjusting state during render (guarded by a change
+  // check) is React's recommended alternative to a setState-in-effect here.
+  const [seenPhotoState, setSeenPhotoState] = useState(photoState);
+  if (photoState !== seenPhotoState) {
+    setSeenPhotoState(photoState);
+    if (photoState?.ok) setHasFile(false);
+  }
+
+  // Move focus to the confirmation on success. role="status" alone announces
+  // unreliably when the element is inserted already containing its text; focusing
+  // it is the belt-and-braces that always works.
+  useEffect(() => {
+    if (photoState?.ok) savedRef.current?.focus();
+  }, [photoState]);
 
   // Revoke the local object URL on unmount (cleanup only — no setState).
   useEffect(
@@ -110,8 +127,10 @@ export function OnboardingWizard({
             {uploading ? "Uploading…" : savedPhotoUrl ? "Upload new photo" : "Upload photo"}
           </button>
 
-          {savedPhotoUrl && !hasFile && (
-            <p className="font-mono text-xs text-mint" role="status">✓ Photo saved</p>
+          {photoState?.ok && !hasFile && (
+            <p ref={savedRef} tabIndex={-1} className="font-mono text-xs text-mint outline-none" role="status">
+              ✓ Photo saved — you can continue below.
+            </p>
           )}
         </form>
       </div>
