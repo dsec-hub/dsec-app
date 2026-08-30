@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { getSocials } from "@/lib/api";
 import { PortalHeader } from "@/components/portal-header";
 import { PortalFooter } from "@/components/portal-footer";
+import { LiveRegionProvider } from "@/components/live-region";
 
 // Same three faces as dsec-website so the portal reads as one brand: Silkscreen
 // (chunky bitmap display), Hanken Grotesk (body), JetBrains Mono (utility).
@@ -58,11 +59,13 @@ export default async function RootLayout({
         >
           Skip to content
         </a>
-        <PortalHeader email={session?.user?.email ?? null} />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <PortalFooter socials={socials} />
+        <LiveRegionProvider>
+          <PortalHeader email={session?.user?.email ?? null} />
+          <main id="main" className="flex-1">
+            {children}
+          </main>
+          <PortalFooter socials={socials} />
+        </LiveRegionProvider>
       </body>
     </html>
   );

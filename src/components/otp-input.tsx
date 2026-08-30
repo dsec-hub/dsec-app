@@ -12,11 +12,13 @@ export function OtpInput({
   name = "code",
   disabled = false,
   autoFocus = true,
+  describedBy,
 }: {
   length?: number;
   name?: string;
   disabled?: boolean;
   autoFocus?: boolean;
+  describedBy?: string;
 }) {
   const [vals, setVals] = useState<string[]>(() => Array(length).fill(""));
   const refs = useRef<Array<HTMLInputElement | null>>([]);
@@ -90,6 +92,7 @@ export function OtpInput({
             disabled={disabled}
             autoFocus={autoFocus && i === 0}
             aria-label={`Digit ${i + 1} of ${length}`}
+            aria-describedby={describedBy}
             className="h-12 w-10 border-[3px] border-paper bg-void text-center font-display text-xl text-paper shadow-[2px_2px_0_0_var(--color-paper)] outline-none transition-colors focus:border-pink disabled:opacity-50 sm:h-14 sm:w-12 sm:text-2xl"
           />
         ))}

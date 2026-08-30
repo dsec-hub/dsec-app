@@ -9,6 +9,10 @@ import {
   type PhotoState,
 } from "./actions";
 
+// Client-side courtesy check only. Keep in sync with MAX_UPLOAD_BYTES in
+// ./actions.ts — the server remains the real control (client checks are bypassable).
+const MAX_BYTES = 12_000_000; // 12 MB
+
 /**
  * First-run setup. The ONE required step is a clear face photo — it's how
  * committee verifies a member against their membership card at events. Everything
@@ -23,7 +27,9 @@ export function OnboardingWizard({
 }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [hasFile, setHasFile] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
   const previewRef = useRef<string | null>(null);
+  const savedRef = useRef<HTMLParagraphElement>(null);
 
   const [photoState, uploadAction, uploading] = useActionState<PhotoState, FormData>(
     uploadFacePhoto,
@@ -38,6 +44,22 @@ export function OnboardingWizard({
   // upload, else whatever was already on the account. Derived — no effect.
   const savedPhotoUrl = (photoState?.ok && photoState.photoUrl) || initialPhotoUrl;
 
+  // Reset hasFile the moment an upload succeeds, so the Upload button re-disables
+  // until a new file is picked. Adjusting state during render (guarded by a change
+  // check) is React's recommended alternative to a setState-in-effect here.
+  const [seenPhotoState, setSeenPhotoState] = useState(photoState);
+  if (photoState !== seenPhotoState) {
+    setSeenPhotoState(photoState);
+    if (photoState?.ok) setHasFile(false);
+  }
+
+  // Move focus to the confirmation on success. role="status" alone announces
+  // unreliably when the element is inserted already containing its text; focusing
+  // it is the belt-and-braces that always works.
+  useEffect(() => {
+    if (photoState?.ok) savedRef.current?.focus();
+  }, [photoState]);
+
   // Revoke the local object URL on unmount (cleanup only — no setState).
   useEffect(
     () => () => {
@@ -50,6 +72,16 @@ export function OnboardingWizard({
     const file = e.target.files?.[0];
     if (previewRef.current) URL.revokeObjectURL(previewRef.current);
     if (file) {
+      // Reject oversized files before the round trip (the server enforces the
+      // same 12 MB cap, but only after buffering the whole upload).
+      if (file.size > MAX_BYTES) {
+        setPickError("That image is too large (max 12 MB). Try a smaller one.");
+        previewRef.current = null;
+        setPreview(null);
+        setHasFile(false);
+        return;
+      }
+      setPickError(null);
       const url = URL.createObjectURL(file);
       previewRef.current = url;
       setPreview(url);
@@ -91,16 +123,26 @@ export function OnboardingWizard({
             <span className="font-mono text-xs uppercase tracking-wide text-paper/60">
               {savedPhotoUrl ? "Replace photo" : "Choose or take a photo"}
             </span>
+            {/*
+              NEW-UXA11Y-07: `capture="user"` intentionally removed so mobile
+              members also get the Photo Library / Files option, honouring the
+              "Choose or take a photo" label. If a live capture is required for
+              anti-fraud door verification, the owner can re-add `capture="user"`
+              here and relabel the span above to "Take a live photo".
+            */}
             <input
               type="file"
               name="file"
               accept="image/*"
-              capture="user"
               required
               onChange={onPick}
               className="pixel-input file:mr-3 file:border-0 file:bg-pink file:px-3 file:py-1 file:font-mono file:text-xs file:text-paper"
             />
           </label>
+
+          {pickError && (
+            <p className="font-mono text-sm text-coral" role="alert">{pickError}</p>
+          )}
 
           {photoState && "error" in photoState && photoState.error && (
             <p className="font-mono text-sm text-coral" role="alert">{photoState.error}</p>
@@ -110,8 +152,10 @@ export function OnboardingWizard({
             {uploading ? "Uploading…" : savedPhotoUrl ? "Upload new photo" : "Upload photo"}
           </button>
 
-          {savedPhotoUrl && !hasFile && (
-            <p className="font-mono text-xs text-mint" role="status">✓ Photo saved</p>
+          {photoState?.ok && !hasFile && (
+            <p ref={savedRef} tabIndex={-1} className="font-mono text-xs text-mint outline-none" role="status">
+              ✓ Photo saved — you can continue below.
+            </p>
           )}
         </form>
       </div>

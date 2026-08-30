@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 
 import { OtpInput } from "@/components/otp-input";
+import { useAnnounce } from "@/components/live-region";
 import { loginAction, type LoginState } from "./actions";
 
 export function LoginForm({ callbackUrl }: { callbackUrl?: string | null }) {
@@ -12,6 +13,24 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string | null }) {
   );
   const step = state?.step ?? "email";
 
+  // Announce step changes on the parallel screen-reader channel; the visible
+  // paragraphs stay untouched for sighted users. Track "first becomes code" so a
+  // verify-error re-render (still on the code step) doesn't re-announce the hint.
+  const announce = useAnnounce();
+  const prevStepRef = useRef<"email" | "code">("email");
+  useEffect(() => {
+    if (state?.step !== "code") {
+      prevStepRef.current = state?.step ?? "email";
+      return;
+    }
+    if (state.resent) {
+      announce("A new code is on its way.");
+    } else if (prevStepRef.current !== "code") {
+      announce(`We emailed a 6-digit code to ${state.email}.`);
+    }
+    prevStepRef.current = "code";
+  }, [state, announce]);
+
   if (step === "code") {
     const email = state && state.step === "code" ? state.email : "";
     return (
@@ -19,7 +38,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string | null }) {
         <input type="hidden" name="email" value={email} />
         {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
         <div>
-          <p className="text-sm text-paper/80">
+          <p id="otp-hint" className="text-sm text-paper/80">
             Enter the 6-digit code we emailed to{" "}
             <span className="font-mono text-sky">{email}</span>.
           </p>
@@ -28,7 +47,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string | null }) {
           )}
         </div>
 
-        <OtpInput name="code" disabled={pending} />
+        <OtpInput name="code" disabled={pending} describedBy="otp-hint" />
 
         {state?.error && (
           <p className="font-mono text-sm text-coral" role="alert">{state.error}</p>
