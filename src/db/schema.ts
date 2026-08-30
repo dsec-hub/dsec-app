@@ -20,6 +20,7 @@
  * NEVER point `alembic --autogenerate` at this DB — it would emit destructive
  * DROPs for these app-owned tables.
  */
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   serial,
@@ -36,6 +37,9 @@ import {
 
 // --- Portal login + membership lifecycle (app-owned) ---------------------- //
 
+// UNIQUE on lower(email): one portal account per student regardless of how they
+// capitalise their address. Created by dsec-app/scripts/add-portal-account-table.ts,
+// NOT by Alembic. Any insert path must compare case-insensitively.
 export const portalAccount = pgTable(
   "portal_account",
   {
@@ -85,7 +89,7 @@ export const portalAccount = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("ix_portal_account_email").using("btree", table.email.asc().nullsLast()),
+    uniqueIndex("ix_portal_account_email").using("btree", sql`lower(${table.email})`),
     index("ix_portal_account_status").using("btree", table.status.asc().nullsLast()),
     index("ix_portal_account_member_id").using("btree", table.memberId.asc().nullsLast()),
   ],
@@ -137,6 +141,12 @@ export const members = pgTable("members", {
   lastPaidDate: date("last_paid_date", { mode: "string" }),
   endDate: date("end_date", { mode: "string" }),
   isCurrent: boolean("is_current").default(true).notNull(),
+  // Stamped by dsec-api every time an import turns this member back on (owned by
+  // Alembic; the column already exists in Postgres). It is when we last SAW this
+  // member on a roster import — the correct clock for the post-lapse grace window,
+  // because it survives the member falling off the roster (is_current=false).
+  // Declaration-only mirror: do NOT add a Drizzle migration for it.
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true, mode: "string" }),
 });
 
 /** Ingest audit log — we read it to detect "a membership import ran since X". */
@@ -166,5 +176,11 @@ export const emailLoginCode = pgTable(
     attempts: integer().default(0).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
   },
-  (table) => [index("ix_email_login_code_email").using("btree", table.email.asc().nullsLast())],
+  (table) => [
+    index("ix_email_login_code_email").using(
+      "btree",
+      table.email.asc().nullsLast(),
+      table.createdAt.desc().nullsLast(),
+    ),
+  ],
 );

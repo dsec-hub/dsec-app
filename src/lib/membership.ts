@@ -46,14 +46,18 @@ function addDays(d: Date, days: number): Date {
 }
 
 /**
- * @param acc          the account's lifecycle fields
- * @param matched      is there a CURRENT roster member with this account's email?
- * @param lastImportAt newest successful *membership* import time, or null if none ran
- * @param now          evaluation instant
+ * @param acc              the account's lifecycle fields
+ * @param matched          is there a CURRENT roster member with this account's email?
+ * @param rosterLastSeenAt when the roster last saw this member (members.last_seen_at
+ *                         of the linked row), or null if there is no linked roster
+ *                         row. This is the grace-window anchor — see branch 3.
+ * @param lastImportAt     newest successful *membership* import time, or null if none ran
+ * @param now              evaluation instant
  */
 export function resolveAccess(
   acc: AccountState,
   matched: boolean,
+  rosterLastSeenAt: Date | null,
   lastImportAt: Date | null,
   now: Date,
 ): Resolution {
@@ -65,9 +69,16 @@ export function resolveAccess(
   if (matched) return { access: "verified", reason: "roster_match" };
 
   // 3. Was a member before but isn't on the roster now → short grace, then lock.
-  //    Survives a single missed/late Friday import or a one-week roster glitch.
+  //    The grace exists to absorb an import that SUCCEEDED while OMITTING this
+  //    member (a truncated, mis-parsed or partial DUSA spreadsheet). A missed or
+  //    late Friday import runs no ingest at all, so nothing is un-currented and no
+  //    grace is needed. Anchor the clock to when the roster last saw them
+  //    (rosterLastSeenAt), NOT to when they last opened the portal — otherwise a
+  //    member who hasn't visited in months gets zero grace, the exact people this
+  //    window exists to protect. Fall back to the visit/verify stamps only when the
+  //    roster timestamp is unavailable (e.g. no linked roster row).
   if (acc.verifiedAt) {
-    const base = new Date(acc.lastMatchedAt ?? acc.verifiedAt);
+    const base = rosterLastSeenAt ?? new Date(acc.lastMatchedAt ?? acc.verifiedAt);
     if (now < addDays(base, LAPSE_GRACE_DAYS)) return { access: "trial", reason: "lapsed_grace" };
     return { access: "locked", reason: "lapsed" };
   }

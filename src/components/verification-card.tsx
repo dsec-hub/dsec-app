@@ -20,6 +20,17 @@ type Props = {
   name: string;
   photoUrl: string | null;
   status: "verified" | "trial";
+  /**
+   * Which card state the page resolved. Passed explicitly rather than inferred
+   * from `code === null`, which is ambiguous — a null code means "not linked to a
+   * roster row yet" OR "the API was unreachable", and those must not show the same
+   * message. "ready" — verified and linked to a roster row, so a code is expected
+   * (the code/not-current/loading sub-states are still read from `code`/`isCurrent`
+   * below); "needs-link" — verified (e.g. committee-approved) but not yet linked to
+   * a DUSA roster record, so no card can be issued until a committee member links
+   * it; "pending" — not yet verified.
+   */
+  cardState: "ready" | "needs-link" | "pending";
   membershipType?: string | null;
   memberSince?: string | null; // ISO date
   /** Present only for a fully-active card (verified + on the roster). */
@@ -84,7 +95,7 @@ function Avatar({ photoUrl, name, size }: { photoUrl: string | null; name: strin
 }
 
 export function VerificationCard(props: Props) {
-  const { name, photoUrl, status, membershipType, memberSince, code, qrSvg, isCurrent = true } = props;
+  const { name, photoUrl, status, cardState, membershipType, memberSince, code, qrSvg, isCurrent = true } = props;
   const active = status === "verified" && !!code;
   const since = fmtDate(memberSince);
 
@@ -150,6 +161,14 @@ export function VerificationCard(props: Props) {
               )}
               {active ? (
                 <p className="mt-1 font-mono text-xs tracking-[0.18em] text-paper/70">{code}</p>
+              ) : cardState === "needs-link" ? (
+                <p className="mt-1 text-xs text-paper/60">
+                  Your membership&apos;s approved, but your account isn&apos;t linked to the DUSA
+                  roster yet — a committee member needs to finish that before we can issue your card.{" "}
+                  <a href="/assistance" className="font-bold text-sky underline-offset-2 hover:underline">
+                    Get help →
+                  </a>
+                </p>
               ) : status === "verified" && isCurrent === false ? (
                 <p className="mt-1 text-xs text-paper/60">
                   Your membership record needs updating before we can issue a card.{" "}
