@@ -55,8 +55,22 @@ database.
 The `app.dsec.club` DNS record is grey-cloud (DNS-only) in Cloudflare, so
 Cloudflare's proxied protections — WAF rules, rate-limiting rules, Bot Fight
 Mode — are **not** in the request path. Edge mitigation is whatever the Vercel
-project's Firewall settings provide. The only in-app throttle is per-email/per-code
-(no per-IP limit), so a custom Firewall rule on `/api/auth/*` is worth configuring.
+project's Firewall settings provide.
+
+**Do not put a Firewall rule on `/api/auth/*` and consider login protected.** It
+would see no login traffic. Both login steps are a Server Action POSTed to
+`/login`: code issuance calls `issueLoginCode()` directly
+(`src/app/login/actions.ts:33`), and verification calls next-auth's `signIn()`
+(`:52`), which in its server-action form builds a `Request` in memory and invokes
+`Auth()` in-process — no HTTP request ever reaches
+`/api/auth/callback/credentials`. `src/proxy.ts` also excludes `/api` from its
+matcher entirely, so the proxy never sees those paths either.
+
+The only in-app throttle is per-email/per-code (`src/lib/login-code.ts`); there
+is no per-IP or global limit. The control that would actually close that gap is
+per-IP and global rate limiting inside `loginAction`, in front of BOTH
+`issueLoginCode` and `signIn` — tracked as SEC-11. If an edge rule is wanted as
+well, scope it to `POST /login`.
 
 > **Migration note.** `api.dsec.club` is moving off Vercel to an OVH VPS, so edge
 > protection for the API becomes a VPS concern rather than a Vercel Firewall one.
