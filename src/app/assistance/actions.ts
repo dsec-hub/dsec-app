@@ -2,10 +2,10 @@
 
 import { and, count, eq } from "drizzle-orm";
 
-import { auth } from "@/auth";
 import { db } from "@/db";
 import { assistanceRequest } from "@/db/schema";
 import { notifyDevsOfAssistance } from "@/lib/notify";
+import { requirePortalUser } from "@/lib/portal-dal";
 
 export type AssistanceState = { ok: true } | { error: string } | undefined;
 
@@ -16,10 +16,13 @@ export async function submitAssistance(
   _prev: AssistanceState,
   formData: FormData,
 ): Promise<AssistanceState> {
-  const session = await auth();
-  const accountId = session?.user?.accountId;
-  const email = session?.user?.email?.toLowerCase();
-  if (!accountId || !email) return { error: "Your session expired — please sign in again." };
+  // "any" is deliberate: a locked / rejected member is EXACTLY who needs to be
+  // able to send an assistance request. Do not tighten this to "active".
+  const user = await requirePortalUser({ allow: "any" });
+  if (!user) return { error: "Your session expired — please sign in again." };
+  const accountId = user.account.id;
+  const email = user.account.email?.toLowerCase();
+  if (!email) return { error: "Your session expired — please sign in again." };
 
   const message = String(formData.get("message") ?? "").trim();
   const contactEmailRaw = String(formData.get("contact_email") ?? "").trim().toLowerCase();

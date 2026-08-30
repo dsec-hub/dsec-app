@@ -119,6 +119,24 @@ export const getPortalUser = cache(async (): Promise<PortalUser | null> => {
 });
 
 /**
+ * The authorisation entry point for Server Actions. A Server Action is a plain
+ * POST endpoint, so the page-level membership redirects in (app)/layout.tsx and
+ * onboarding/page.tsx do NOT protect it — every action must ask for itself.
+ *
+ *   allow: "active" → rejects locked/rejected accounts (the default)
+ *   allow: "any"    → any signed-in account, used ONLY by the assistance form,
+ *                     which locked members must be able to reach
+ */
+export async function requirePortalUser(
+  opts: { allow?: "active" | "any" } = {},
+): Promise<PortalUser | null> {
+  const user = await getPortalUser();
+  if (!user) return null;
+  if ((opts.allow ?? "active") === "active" && user.access === "locked") return null;
+  return user;
+}
+
+/**
  * The verification face photo for a roster member, by `members.id`. Used by the
  * PUBLIC /verify page so a scanned card shows the member's face (matched via the
  * portal_account that linked to this member). No session needed — the caller is
