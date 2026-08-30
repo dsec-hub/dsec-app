@@ -1,0 +1,16 @@
+# Code owners for dsec-app (member portal; handles real member PII).
+# Last match wins, so the owner-only override sits *after* the default.
+#
+# @dsec-hub/dsec-leads  — trusted reviewers (default)
+# @Clupai8o0            — maintainer; the only reviewer for the DB shape.
+
+# Default: any lead may review.
+*                       @dsec-hub/dsec-leads
+
+# The portal reads real member data. Its DB shape must track the schema owned
+# by dsec-api, not diverge from it. Maintainer-only.
+/src/db/schema.ts       @Clupai8o0
+
+# Governance and CI config.
+/.github/               @Clupai8o0
+/CONTRIBUTING.md        @Clupai8o0
