@@ -27,15 +27,18 @@ database.
 |---|---|---|
 | Session auth + route gating | `src/auth.ts`, `src/auth.config.ts`, `src/proxy.ts` | Auth.js v5. The proxy matcher excludes `/api`. |
 | Login codes are peppered before storage | `src/lib/login-code.ts` | HMAC keyed on `AUTH_SECRET`. **If `AUTH_SECRET` is unset the key degrades to an empty string**, which defeats the property that a database leak cannot reverse the codes. Always set it. |
-| Post-login redirect allowlist | `src/lib/login-redirect.ts` | Relative paths and allowlisted sibling origins only, so `?callbackUrl=` is not an open redirect. The allowlist is built from `NEXT_PUBLIC_GAMES_URL` and `AUTH_URL`. |
+| Post-login redirect allowlist | `src/lib/login-redirect.ts` | Rejects any backslash form outright, then resolves the value and re-verifies its origin: relative paths stay in-portal, and only allowlisted sibling origins pass (allowlist built from `NEXT_PUBLIC_GAMES_URL` and `AUTH_URL`). **This `?callbackUrl=` handling *was* an open redirect before this fix** — the old string-prefix check accepted a backslash form that the URL parser resolved to an external origin (SEC-16). |
+| Login code throttle | `src/lib/login-code.ts` | DB-backed: at most 5 codes issued per **target email** per hour (`MAX_PER_HOUR`) and 5 wrong guesses per code (`MAX_ATTEMPTS`). Keyed on the email/code only — there is no per-IP or global limit. |
 | Cross-subdomain session | `AUTH_COOKIE_DOMAIN` | Set to `.dsec.club` in production, and to the same value in `dsec-games`, with a matching `AUTH_SECRET`. |
 
 ### Known gaps in this repo
 
-- There is **no application-level rate limiting and no login throttle** in this
-  repo. There is no Upstash dependency and no `src/lib/rate-limit.ts`. An earlier
-  version of this document claimed both existed here; they exist in `dsec-hub`.
-  Brute-force protection for this portal is currently edge-only.
+- There is a login throttle (see the "Login code throttle" row above:
+  `src/lib/login-code.ts` caps issuance at 5 codes per target email per hour and
+  5 wrong guesses per code), but **no per-IP or global application-level rate
+  limiting**. There is no Upstash dependency and no `src/lib/rate-limit.ts` — those
+  exist in `dsec-hub`. The throttle is keyed on the target email/code only, so
+  broader (per-IP) protection is still edge-only.
 - `next-auth` is pinned to a pre-release (`5.0.0-beta.31`) with a caret range, so
   an unpinned install can move the auth layer. See the repo's open security
   advisories before upgrading.
@@ -52,8 +55,8 @@ database.
 The `app.dsec.club` DNS record is grey-cloud (DNS-only) in Cloudflare, so
 Cloudflare's proxied protections — WAF rules, rate-limiting rules, Bot Fight
 Mode — are **not** in the request path. Edge mitigation is whatever the Vercel
-project's Firewall settings provide. Given there is no in-app throttle, a custom
-Firewall rule on `/api/auth/*` is worth configuring.
+project's Firewall settings provide. The only in-app throttle is per-email/per-code
+(no per-IP limit), so a custom Firewall rule on `/api/auth/*` is worth configuring.
 
 > **Migration note.** `api.dsec.club` is moving off Vercel to an OVH VPS, so edge
 > protection for the API becomes a VPS concern rather than a Vercel Firewall one.
