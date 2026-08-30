@@ -25,6 +25,13 @@ type Props = {
   /** Present only for a fully-active card (verified + on the roster). */
   code?: string | null;
   qrSvg?: string | null;
+  /**
+   * Whether dsec-api still reports this member as current. When false the code
+   * it minted would scan as invalid at the door (the public /verify endpoint
+   * only resolves CURRENT members), so the caller passes no code and we show a
+   * "record needs updating" message instead of the "loading" one.
+   */
+  isCurrent?: boolean;
 };
 
 function fmtDate(iso?: string | null): string | null {
@@ -77,7 +84,7 @@ function Avatar({ photoUrl, name, size }: { photoUrl: string | null; name: strin
 }
 
 export function VerificationCard(props: Props) {
-  const { name, photoUrl, status, membershipType, memberSince, code, qrSvg } = props;
+  const { name, photoUrl, status, membershipType, memberSince, code, qrSvg, isCurrent = true } = props;
   const active = status === "verified" && !!code;
   const since = fmtDate(memberSince);
 
@@ -143,6 +150,13 @@ export function VerificationCard(props: Props) {
               )}
               {active ? (
                 <p className="mt-1 font-mono text-xs tracking-[0.18em] text-paper/70">{code}</p>
+              ) : status === "verified" && isCurrent === false ? (
+                <p className="mt-1 text-xs text-paper/60">
+                  Your membership record needs updating before we can issue a card.{" "}
+                  <a href="/assistance" className="font-bold text-sky underline-offset-2 hover:underline">
+                    Get help →
+                  </a>
+                </p>
               ) : status === "verified" ? (
                 <p className="mt-1 text-xs text-paper/60">Your card is loading — check back in a moment.</p>
               ) : (

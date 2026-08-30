@@ -29,7 +29,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!email || !code) return null;
         const ok = await verifyLoginCode(email, code);
         if (!ok) return null;
-        return { id: email, email, name: email.split("@")[0] };
+        // No name is derived from the email address: the email-code provider
+        // carries no display name, and inventing "s223456789" here would be
+        // written over whatever the member set in onboarding (NEW-APPDEEP-05).
+        return { id: email, email };
       },
     }),
   ],

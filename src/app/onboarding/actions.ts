@@ -3,10 +3,10 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 
-import { auth } from "@/auth";
 import { db } from "@/db";
 import { portalAccount } from "@/db/schema";
 import { apiAuth } from "@/lib/api";
+import { requirePortalUser } from "@/lib/portal-dal";
 
 export type PhotoState = { ok?: true; photoUrl?: string; error?: string } | undefined;
 export type FinishState = { error: string } | undefined;
@@ -20,13 +20,16 @@ const MAX_UPLOAD_BYTES = 12_000_000; // 12 MB source; dsec-api re-compresses to 
  * during onboarding don't pile up. Needs a write-scoped DSEC_API_KEY.
  */
 export async function uploadFacePhoto(_prev: PhotoState, fd: FormData): Promise<PhotoState> {
-  const session = await auth();
-  const accountId = session?.user?.accountId;
-  if (!accountId) return { error: "Your session expired — please sign in again." };
+  const user = await requirePortalUser();
+  if (!user) {
+    return { error: "Your session has expired or your account isn't active. Sign in again, or use the assistance form if you think that's wrong." };
+  }
+  const accountId = user.account.id;
 
   const file = fd.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a photo to upload." };
   if (file.type && !file.type.startsWith("image/")) return { error: "That file isn't an image." };
+  // NOTE: this cap runs AFTER Next has buffered the whole file into memory — see SEC-34.
   if (file.size > MAX_UPLOAD_BYTES) return { error: "That image is too large (max 12 MB)." };
 
   const env = apiAuth();
@@ -96,9 +99,11 @@ export async function uploadFacePhoto(_prev: PhotoState, fd: FormData): Promise<
  * optional display name can be set here.
  */
 export async function completeOnboarding(_prev: FinishState, fd: FormData): Promise<FinishState> {
-  const session = await auth();
-  const accountId = session?.user?.accountId;
-  if (!accountId) return { error: "Your session expired — please sign in again." };
+  const user = await requirePortalUser();
+  if (!user) {
+    return { error: "Your session has expired or your account isn't active. Sign in again, or use the assistance form if you think that's wrong." };
+  }
+  const accountId = user.account.id;
 
   const [account] = await db
     .select({ photoUrl: portalAccount.photoUrl })

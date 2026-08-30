@@ -28,6 +28,13 @@ export default async function DashboardPage() {
   const cardName =
     user?.account.name?.trim() || member?.fullName?.trim() || verification?.fullName?.trim() || firstName;
 
+  // dsec-api mints a code for any member id, but /members/verify/{code} only
+  // resolves CURRENT members — so a code for a not-current member scans as
+  // invalid at the door. Don't show a card we know will be rejected; the card
+  // shows a "record needs updating" message instead (NEW-APPDEEP-02).
+  const cardCode = verification?.isCurrent ? verification.code : null;
+  const cardQr = verification?.isCurrent ? verification.qrSvg : null;
+
   return (
     <>
       <p className="eyebrow">Welcome back</p>
@@ -45,8 +52,9 @@ export default async function DashboardPage() {
           status={verified ? "verified" : "trial"}
           membershipType={verification?.membershipType ?? member?.membershipType ?? null}
           memberSince={verification?.memberSince ?? member?.firstSubscriptionDate ?? null}
-          code={verification?.code ?? null}
-          qrSvg={verification?.qrSvg ?? null}
+          code={cardCode}
+          qrSvg={cardQr}
+          isCurrent={verification?.isCurrent ?? true}
         />
         {!verified && (
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -96,7 +96,7 @@ export async function sendLoginCodeEmail(email: string, code: string): Promise<b
   if (!key) return false;
 
   const html = renderEmail({
-    preview: `Your DSEC sign-in code is ${code}`,
+    preview: "Your sign-in code is inside — it expires in 10 minutes.",
     eyebrow: "Member portal",
     heading: "Your sign-in code",
     body: `
@@ -112,7 +112,7 @@ export async function sendLoginCodeEmail(email: string, code: string): Promise<b
       body: JSON.stringify({
         from,
         to: [email],
-        subject: `Your DSEC sign-in code: ${code}`,
+        subject: "Your DSEC sign-in code",
         html,
         text: [
           `Your DSEC member portal sign-in code is:`,
