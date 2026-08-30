@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 
 import { submitAssistance, type AssistanceState } from "./actions";
 
@@ -10,9 +10,18 @@ export function AssistanceForm({ email }: { email: string }) {
     undefined,
   );
 
-  if (state && "ok" in state && state.ok) {
+  // On success the form is replaced by this panel; move focus to it (and keep
+  // role="status") so keyboard / screen-reader users aren't stranded on <body>.
+  const successRef = useRef<HTMLDivElement>(null);
+  const ok = Boolean(state && "ok" in state && state.ok);
+
+  useEffect(() => {
+    if (ok) successRef.current?.focus();
+  }, [ok]);
+
+  if (ok) {
     return (
-      <div className="pixel-card p-6" role="status">
+      <div ref={successRef} tabIndex={-1} className="pixel-card p-6 outline-none" role="status">
         <p className="font-display text-lg font-bold text-mint">✓ Request sent</p>
         <p className="mt-2 text-sm text-paper/80">
           Thanks — a DSEC developer will take a look and sort out your access. We&apos;ll be in touch by email.
