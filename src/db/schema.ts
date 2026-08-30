@@ -141,6 +141,12 @@ export const members = pgTable("members", {
   lastPaidDate: date("last_paid_date", { mode: "string" }),
   endDate: date("end_date", { mode: "string" }),
   isCurrent: boolean("is_current").default(true).notNull(),
+  // Stamped by dsec-api every time an import turns this member back on (owned by
+  // Alembic; the column already exists in Postgres). It is when we last SAW this
+  // member on a roster import — the correct clock for the post-lapse grace window,
+  // because it survives the member falling off the roster (is_current=false).
+  // Declaration-only mirror: do NOT add a Drizzle migration for it.
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true, mode: "string" }),
 });
 
 /** Ingest audit log — we read it to detect "a membership import ran since X". */

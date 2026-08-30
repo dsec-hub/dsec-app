@@ -61,8 +61,11 @@ export const getPortalUser = cache(async (): Promise<PortalUser | null> => {
     .limit(1);
   if (!account) return null;
 
-  // (2) Live roster match: a CURRENT member whose email equals this login.
-  const [member] = await db
+  // (2) Roster lookup by email, current-or-not. A CURRENT match is the paid-member
+  // signal (drives `matched`); a NOT-current row still tells us when the roster
+  // last saw this member (last_seen_at), which anchors the post-lapse grace window
+  // (NEW-APPDEEP-03). Order current-first so a live membership always wins.
+  const [rosterRow] = await db
     .select({
       id: members.id,
       fullName: members.fullName,
@@ -71,11 +74,34 @@ export const getPortalUser = cache(async (): Promise<PortalUser | null> => {
       membershipType: members.membershipType,
       firstSubscriptionDate: members.firstSubscriptionDate,
       endDate: members.endDate,
+      isCurrent: members.isCurrent,
+      lastSeenAt: members.lastSeenAt,
     })
     .from(members)
-    .where(and(eq(members.isCurrent, true), sql`lower(${members.email}) = ${email}`))
-    .orderBy(desc(members.endDate))
+    .where(sql`lower(${members.email}) = ${email}`)
+    .orderBy(desc(members.isCurrent), desc(members.endDate))
     .limit(1);
+
+  // Only a CURRENT roster row is a live match (drives the verified state and the
+  // Membership tile). A not-current row is kept solely for its timestamp below.
+  const member: MatchedMember | null = rosterRow?.isCurrent
+    ? {
+        id: rosterRow.id,
+        fullName: rosterRow.fullName,
+        email: rosterRow.email,
+        dusaMember: rosterRow.dusaMember,
+        membershipType: rosterRow.membershipType,
+        firstSubscriptionDate: rosterRow.firstSubscriptionDate,
+        endDate: rosterRow.endDate,
+      }
+    : null;
+
+  // Grace anchor: when the roster last saw this member, read from their row
+  // whether or not it is still current — so a member dropped by one bad import
+  // still has a recent timestamp (their row keeps last_seen_at from the previous
+  // good import). Null when they have never been on the roster → resolveAccess
+  // falls back to the visit/verify stamps.
+  const rosterLastSeenAt = rosterRow?.lastSeenAt ? new Date(rosterRow.lastSeenAt) : null;
 
   // (3) Newest successful *membership* import — tells us whether a Friday roster
   // has landed since this account signed up.
@@ -89,7 +115,7 @@ export const getPortalUser = cache(async (): Promise<PortalUser | null> => {
 
   // (4) Decide.
   const now = new Date();
-  const resolution = resolveAccess(account, !!member, lastImportAt, now);
+  const resolution = resolveAccess(account, !!member, rosterLastSeenAt, lastImportAt, now);
   const nowISO = now.toISOString();
 
   // (5) Persist the snapshot (best-effort heartbeat).
