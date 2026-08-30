@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { portalAccount } from "@/db/schema";
 import { TRIAL_DAYS } from "@/lib/membership";
+import { profileRefreshPatch } from "@/lib/portal-account-merge";
 
 /**
  * Find-or-create the portal_account for a freshly-authenticated OAuth identity,
@@ -32,15 +33,11 @@ export async function upsertPortalAccount(input: {
     .limit(1);
 
   if (existing) {
+    // Non-destructive refresh: a sign-in carrying no name/avatar must not blank
+    // out a value the member set themselves (NEW-APPDEEP-05).
     await db
       .update(portalAccount)
-      .set({
-        name: input.name,
-        avatarUrl: input.avatarUrl,
-        provider: input.provider,
-        providerAccountId: input.providerAccountId,
-        updatedAt: new Date().toISOString(),
-      })
+      .set({ ...profileRefreshPatch(input), updatedAt: new Date().toISOString() })
       .where(eq(portalAccount.id, existing.id));
     return existing.id;
   }
